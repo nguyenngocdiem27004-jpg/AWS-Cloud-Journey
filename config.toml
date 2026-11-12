@@ -1,0 +1,54 @@
+# AWS Infrastructure Security Workshop
+
+theme = "hugo-theme-learn"
+
+# Search functionality
+[outputs]
+home = ["HTML", "RSS", "JSON"]
+
+[params]
+  themeVariant = "workshop"
+  editURL = ""
+  description = "Research and Implementation of Infrastructure Security on AWS"
+  author = "AWS Infrastructure Security Workshop"
+  showVisitedLinks = true
+  disableBreadcrumb = false
+  disableNextPrev = false
+
+[Languages]
+
+# English version
+[Languages.en]
+title = "AWS Infrastructure Security Workshop"
+weight = 1
+languageName = "English"
+
+[[Languages.en.menu.shortcuts]]
+name = "<i class='fab fa-aws'></i> AWS Official Documentation"
+identifier = "AWS Documentation"
+url = "https://docs.aws.amazon.com/"
+weight = 20
+
+[[Languages.en.menu.shortcuts]]
+name = "<i class='fab fa-github'></i> GitHub"
+identifier = "GitHub"
+url = "https://github.com/"
+weight = 21
+
+# Vietnamese version
+[Languages.vi]
+title = "Bảo mật hạ tầng trên AWS"
+weight = 2
+languageName = "Tiếng Việt"
+
+[[Languages.vi.menu.shortcuts]]
+name = "<i class='fab fa-aws'></i> Tài liệu AWS chính thức"
+identifier = "AWS Documentation"
+url = "https://docs.aws.amazon.com/"
+weight = 20
+
+[[Languages.vi.menu.shortcuts]]
+name = "<i class='fab fa-github'></i> GitHub"
+identifier = "GitHub"
+url = "https://github.com/"
+weight = 21
