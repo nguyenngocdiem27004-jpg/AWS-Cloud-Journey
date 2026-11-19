@@ -1,5 +1,5 @@
 ---
-title: "Connectivity Between Amazon EC2 and Amazon RDS"
+title: "IAM and Secure Access Management"
 date: 2026-10-30
 weight: 5
 chapter: false
@@ -8,74 +8,105 @@ pre: " <b> 4.5. </b> "
 
 #### Overview
 
-This section describes the network connectivity between the Amazon EC2 instance and the Amazon RDS MySQL database within the AWS environment.
+Identity and Access Management (IAM) is an important part of AWS infrastructure security. It allows administrators to define who can access AWS resources and which actions they are permitted to perform.
 
-The EC2 instance, `KLTN-Web-Server`, is used as the web server, while the RDS instance, `kltn-db`, provides the database service. Communication between these resources is controlled by their associated Security Groups.
+In this project, IAM roles and AWS Systems Manager Session Manager are used to provide secure administrative access to the private EC2 instance.
 
-The objective is to allow the EC2 instance to access the RDS database through the MySQL port (TCP 3306), while restricting database access to authorized resources.
+The main objective is to manage permissions without exposing the instance through a public IP address or opening an inbound SSH port.
 
-#### 1. Prepare the Environment
+### 1. IAM Role for EC2
 
-Before testing the connection, verify that the following resources are available:
+The EC2 instance KLTN-Web-Server uses the IAM role KLTN-EC2-SSM-Role.
 
-- An existing VPC named `KLTN-VPC`.
-- An EC2 instance named `KLTN-Web-Server`.
-- An RDS MySQL instance named `kltn-db`.
-- Security Groups associated with the EC2 and RDS instances.
-- Network routes that allow communication between the resources.
+This role allows the instance to communicate with AWS Systems Manager and supports Session Manager functionality.
 
-The EC2 instance and RDS database are deployed within the AWS VPC. The RDS instance uses a DB subnet group containing private subnets.
+The role uses the AWS-managed policy:
 
-#### 2. Configure the Security Groups
+- AmazonSSMManagedInstanceCore
 
-Security Groups control network traffic to and from AWS resources. To allow the EC2 instance to connect to the RDS database, configure the inbound rules of the RDS Security Group.
+This policy provides the permissions required for the EC2 instance to register with and communicate with Systems Manager.
 
-**EC2 Security Group**
+![IAM role with AmazonSSMManagedInstanceCore policy](/images/4-Workshop/4.5-IAM%20and%20Secure%20Access%20Management/iam-role-policy.png)
 
-The EC2 Security Group allows HTTP traffic from the Application Load Balancer Security Group.
+### 2. Reviewing the IAM Role
 
-**RDS Security Group**
+To review the IAM role:
 
-Configure the following inbound rule:
+1. Open the AWS Management Console.
+2. Navigate to **IAM**.
+3. Select **Roles**.
+4. Find KLTN-EC2-SSM-Role.
+5. Review the attached permission policies.
+6. Confirm that AmazonSSMManagedInstanceCore is attached.
+7. Verify that the role is associated with the EC2 instance.
 
-| Type | Protocol | Port | Source |
-|---|---|---|---|
-| MySQL/Aurora | TCP | 3306 | EC2 Security Group |
+The IAM role allows the instance to obtain temporary permissions without storing long-term access keys on the server.
 
-Using the EC2 Security Group as the source restricts database access to the authorized EC2 instance instead of allowing connections from all IP addresses.
+### 3. Secure Access Through Session Manager
 
-#### 3. Verify the Database Connectivity
+AWS Systems Manager Session Manager provides browser-based and command-line access to managed EC2 instances.
 
-After configuring the Security Groups, use the EC2 instance to test connectivity to the RDS database.
+Unlike traditional SSH access, Session Manager does not require an inbound SSH rule or a public IP address.
 
-The connection test checks whether the EC2 instance can reach the database endpoint through TCP port 3306.
+The project uses the following components:
 
-Example command:
+- EC2 instance: KLTN-Web-Server
 
-```bash
-nc -zv <RDS-endpoint> 3306
-```
+- IAM role: KLTN-EC2-SSM-Role
 
-Replace `<RDS-endpoint>` with the actual endpoint or reachable database address.
+- Systems Manager permissions: AmazonSSMManagedInstanceCore
 
-A successful connection indicates that the network path and Security Group rules allow traffic through the MySQL port.
+- VPC Endpoints: KLTN-SSM-Endpoint and KLTN-SSMMessages-Endpoint
 
-#### 4. Test Results
+The VPC Endpoints allow the private instance to communicate with Systems Manager through private network connectivity.
 
-During the implementation, the connection from the EC2 instance to the RDS MySQL database was tested successfully.
+### 4. Establishing a Session Manager Connection
 
-The test returned the following connection message:
+To access the EC2 instance:
 
-```text
-Connected to 10.0.2.198:3306
-```
+1. Open the **EC2** console.
+2. Select KLTN-Web-Server.
+3. Click **Connect**.
+4. Open the **Session Manager** tab.
+5. Click **Connect** to start a session.
 
-This confirms that the EC2 instance can establish a TCP connection to the RDS database on port 3306.
+After the connection is established, a terminal session is available for administration.
 
-**Note:** This test verifies network connectivity only. Reading, querying, or processing application data from the database has not been demonstrated in this step.
+The session can be used to check system services, review network settings, and manage the Nginx web server.
 
-#### Conclusion
+![Successful Systems Manager Session Manager terminal session](/images/4-Workshop/4.5-IAM%20and%20Secure%20Access%20Management/ssm-session.png)
 
-In this section, the network access between Amazon EC2 and Amazon RDS was configured and tested using Security Groups.
+### 5. Security Benefits
 
-The successful TCP connection on port 3306 confirms that the EC2 instance can reach the MySQL database through the configured network path. Restricting the RDS inbound rule to the EC2 Security Group also helps reduce unauthorized database access.
+The IAM and Session Manager configuration provides several security benefits:
+
+- **No inbound SSH requirement:** The instance does not need an open SSH port for administrative access.
+
+- **No public IP requirement:** The private EC2 instance can be managed without direct Internet exposure.
+
+- **Temporary permissions:** IAM roles provide temporary credentials instead of requiring long-term access keys on the instance.
+
+- **Centralized access management:** IAM and Systems Manager help manage and control administrative access.
+
+- **Private service connectivity:** VPC Endpoints allow communication with supported Systems Manager services through the VPC.
+
+#### Verification Results
+
+The implementation verified that:
+
+- The IAM role KLTN-EC2-SSM-Role is assigned to the EC2 instance.
+
+- The AmazonSSMManagedInstanceCore policy is attached.
+
+- The SSM Agent is active on the instance.
+
+- Session Manager can establish a connection to the private EC2 instance.
+
+- The instance can be administered without a public IPv4 address or inbound SSH access.
+
+### 6. Conclusion
+
+This section demonstrates how IAM roles and AWS Systems Manager Session Manager can be used to manage a private EC2 instance securely.
+
+By combining IAM permissions, Session Manager, and VPC Endpoints, the project reduces the need for direct network access and avoids exposing administrative services to the public Internet.
+

@@ -8,203 +8,200 @@ pre: " <b> 4.8. </b> "
 
 #### Tổng quan
 
-Trong phần cuối này, chúng ta tiến hành rà soát và xác minh hạ tầng AWS đã triển khai trong dự án.
+Phần cuối cùng tập trung rà soát hạ tầng AWS và tổng hợp các hoạt động kiểm tra bảo mật đã thực hiện trong dự án.
 
-Quá trình kiểm thử tập trung vào khả năng kết nối giữa các tài nguyên AWS, trạng thái hoạt động của máy chủ web EC2, khả năng truy cập cơ sở dữ liệu, chức năng lọc lưu lượng của AWS WAF và các dịch vụ giám sát, ghi nhật ký.
+Quá trình kiểm thử tập trung vào khả năng truy cập EC2 riêng tư, trạng thái máy chủ web, hoạt động chuyển tiếp lưu lượng của ALB, khả năng lọc của AWS WAF, cấu hình Security Group và các dịch vụ giám sát, ghi nhật ký.
 
-Mục tiêu chính là xác minh các tài nguyên đã triển khai hoạt động theo thiết kế, kiểm tra cấu hình bảo mật và xác định những tài nguyên có thể phát sinh chi phí không cần thiết.
+Mục đích là xác minh các biện pháp bảo mật đã triển khai, xác định những vấn đề cấu hình tiềm ẩn và xem xét mức sử dụng tài nguyên.
 
-#### 1. Rà soát hạ tầng AWS
+### 1. Rà soát hạ tầng AWS
 
-Trước khi tiến hành kiểm thử, cần xem lại kiến trúc tổng thể và xác nhận các tài nguyên chính đã sẵn sàng.
+Các tài nguyên chính được kiểm tra trong giai đoạn xác minh cuối cùng bao gồm:
 
-Hạ tầng bao gồm:
+| Thành phần | Tài nguyên / Cấu hình |
+|---|---|
+| VPC | KLTN-VPC |
+| VPC CIDR | 10.0.0.0/16 |
+| Private Subnet | 10.0.2.0/24 và 10.0.4.0/24 |
+| EC2 Instance | KLTN-Web-Server |
+| EC2 Private IP | 10.0.2.35 |
+| Phương thức truy cập EC2 | AWS Systems Manager Session Manager |
+| Web Server | Nginx |
+| Load Balancer | KLTN-ALB |
+| Web ACL | KLTN-WebACL |
+| Giám sát | CloudWatch, CloudTrail, AWS Config |
+| Thông báo | EventBridge và SNS |
 
-- **Amazon VPC:** `KLTN-VPC`, sử dụng CIDR `10.0.0.0/16`.
-- **Subnet:** Hai public subnet và hai private subnet.
-- **Internet Gateway và NAT Gateway:** Cung cấp kết nối Internet theo thiết kế mạng.
-- **Amazon EC2:** `KLTN-Web-Server`, triển khai máy chủ web Nginx.
-- **Amazon RDS:** `kltn-db`, cung cấp dịch vụ cơ sở dữ liệu MySQL.
-- **Application Load Balancer:** `KLTN-ALB`, tiếp nhận lưu lượng truy cập web.
-- **AWS WAF:** `KLTN-WebACL`, được liên kết với Application Load Balancer.
-- **Giám sát và ghi nhật ký:** Amazon CloudWatch, AWS CloudTrail và AWS Config.
+Quá trình rà soát xác nhận các thành phần chính đang được sử dụng trong hạ tầng hiện tại. RDS và NAT Gateway không được đưa vào danh sách tài nguyên đang hoạt động trong cấu hình cuối cùng này.
 
-#### 2. Kiểm tra máy chủ web EC2
+![Thông tin EC2 riêng tư, không có Public IPv4](/images/4-Workshop/4.8-System%20Testing%20and%20Cleanup/test-private-ec2.png)
 
-Trước tiên, kiểm tra trạng thái hoạt động của EC2 instance.
+### 2. Kiểm tra EC2 và máy chủ web
 
-1. Mở AWS Management Console.
-2. Truy cập **EC2**.
-3. Chọn **Instances**.
-4. Tìm `KLTN-Web-Server`.
-5. Xác nhận instance đang ở trạng thái **Running**.
-6. Kiểm tra các trạng thái kiểm tra của instance đã thành công.
+EC2 Instance được kiểm tra để xác nhận máy chủ đang hoạt động trong Private Subnet và không được gán địa chỉ IPv4 công khai.
 
-Để kiểm tra dịch vụ Nginx, kết nối đến EC2 bằng AWS Systems Manager Session Manager và thực hiện lệnh:
+Các bước kiểm tra gồm:
 
-```bash
-sudo systemctl status nginx
-```
+- Xác nhận KLTN-Web-Server đang chạy.
 
-Dịch vụ cần ở trạng thái đang hoạt động.
+- Kiểm tra các trạng thái kiểm tra Instance.
 
-Ngoài ra, có thể truy cập máy chủ web thông qua DNS name của Application Load Balancer để xác minh các yêu cầu HTTP được chuyển tiếp thành công.
+- Xác minh địa chỉ IP riêng.
 
-#### 3. Kiểm tra Application Load Balancer
+- Xác nhận Session Manager thiết lập được kết nối.
 
-Application Load Balancer phân phối lưu lượng truy cập web đến các target đã đăng ký.
+- Kiểm tra dịch vụ Nginx đang hoạt động.
 
-Để kiểm tra hoạt động:
-
-1. Mở EC2 Console.
-2. Chọn **Load Balancers**.
-3. Mở `KLTN-ALB`.
-4. Kiểm tra trạng thái và DNS name.
-5. Mở phần **Target Groups**.
-6. Kiểm tra trạng thái sức khỏe của EC2 target đã đăng ký.
-
-Trong quá trình triển khai, target group hiển thị một target healthy và không có target unhealthy.
-
-Khi truy cập DNS name của ALB, trang chào mặc định của Nginx cũng được hiển thị, xác nhận máy chủ web có thể truy cập thông qua load balancer.
-
-#### 4. Kiểm tra kết nối giữa EC2 và RDS
-
-Bài kiểm tra tiếp theo xác minh khả năng kết nối mạng giữa EC2 instance và cơ sở dữ liệu RDS MySQL.
-
-Security Group của RDS được cấu hình cho phép lưu lượng MySQL qua cổng TCP `3306` từ Security Group của EC2.
-
-Có thể kiểm tra kết nối từ EC2 bằng lệnh:
+Có thể kiểm tra phản hồi của máy chủ web từ terminal EC2 bằng lệnh:
 
 ```bash
-nc -zv <RDS-endpoint> 3306
+curl -I http://localhost
 ```
 
-Trong quá trình triển khai, kết quả kiểm tra hiển thị:
+Phản hồi HTTP thành công xác nhận Nginx đang xử lý yêu cầu nội bộ.
 
-```text
-Connected to 10.0.2.198:3306
-```
+### 3. Kiểm tra Application Load Balancer
 
-Điều này xác nhận EC2 có thể thiết lập kết nối TCP đến cơ sở dữ liệu RDS thông qua cổng 3306.
+Application Load Balancer được kiểm tra để xác nhận khả năng chuyển tiếp yêu cầu web đến EC2 Target.
 
-**Lưu ý:** Bài kiểm tra này chỉ xác minh khả năng kết nối mạng. Việc truy vấn dữ liệu ở cấp ứng dụng và xử lý dữ liệu từ cơ sở dữ liệu chưa được thực hiện.
+Các nội dung xác minh gồm:
 
-#### 5. Kiểm tra chức năng lọc lưu lượng AWS WAF
+- Kiểm tra cấu hình Listener của ALB.
 
-AWS WAF được liên kết với `KLTN-ALB` để kiểm tra các yêu cầu web gửi đến hệ thống.
+- Kiểm tra Target Group liên kết.
 
-Để kiểm tra cấu hình và thống kê lưu lượng:
+- Xác nhận Target đã đăng ký có trạng thái Healthy.
 
-1. Mở **AWS WAF & Shield**.
-2. Chọn **Web ACLs**.
-3. Mở `KLTN-WebACL`.
-4. Xác nhận `KLTN-ALB` đã được liên kết với Web ACL.
-5. Kiểm tra thống kê các yêu cầu truy cập.
+- Gửi yêu cầu HTTP thông thường đến DNS của ALB.
 
-Trong quá trình triển khai, dashboard của Web ACL hiển thị kết quả:
+Phản hồi HTTP 200 xác nhận dịch vụ web có thể được truy cập thông qua ALB.
 
-| Hành động đối với yêu cầu | Số lượng |
-|---|---:|
-| Allowed (Cho phép) | 5 |
-| Blocked (Chặn) | 25 |
-| Tổng cộng | 30 |
+![Kiểm tra yêu cầu web thông thường](/images/4-Workshop/4.8-System%20Testing%20and%20Cleanup/test-normal.png)
 
-Kết quả cho thấy AWS WAF đã xử lý các yêu cầu truy cập và áp dụng những quy tắc lọc lưu lượng đã cấu hình.
+### 4. Kiểm thử bảo mật AWS WAF
 
-#### 6. Kiểm tra các dịch vụ giám sát và ghi nhật ký
+AWS WAF được kiểm tra bằng các mẫu yêu cầu HTTP thông thường và những yêu cầu có dấu hiệu độc hại.
 
-Các dịch vụ giám sát và ghi nhật ký cung cấp thông tin về hiệu suất tài nguyên, hoạt động tài khoản và cấu hình hạ tầng.
+Kết quả quan sát được tổng hợp như sau:
+
+| Trường hợp kiểm thử | Kết quả |
+|---|---|
+| Yêu cầu HTTP thông thường | HTTP 200 |
+| Mẫu SQL Injection trước khi áp dụng WAF | HTTP 200 |
+| Mẫu SQL Injection sau khi áp dụng WAF | HTTP 403 |
+| Mẫu XSS trước khi áp dụng WAF | HTTP 200 |
+| Mẫu XSS sau khi áp dụng WAF | HTTP 403 |
+| Yêu cầu dạng Path Traversal | HTTP 400 |
+
+Kết quả cho thấy cấu hình WAF đã chặn các yêu cầu thử nghiệm SQL Injection và XSS, trong khi truy cập web thông thường vẫn hoạt động.
+
+Yêu cầu dạng Path Traversal bị từ chối với HTTP 400. Chỉ dựa vào mã phản hồi này chưa thể xác định chính xác thành phần AWS nào đã từ chối yêu cầu.
+
+![Kiểm thử SQL Injection và XSS sau khi áp dụng WAF](/images/4-Workshop/4.8-System%20Testing%20and%20Cleanup/test-sqli-xss.png)
+
+### 5. Rà soát mạng và kiểm soát truy cập
+
+Các cấu hình mạng và kiểm soát truy cập được rà soát nhằm đảm bảo tài nguyên riêng tư không bị phơi bày không cần thiết.
+
+Các nội dung kiểm tra gồm:
+
+- Xác nhận EC2 không có địa chỉ IPv4 công khai.
+
+- Kiểm tra các quy tắc Security Group của EC2.
+
+- Xác nhận quyền quản trị được cung cấp thông qua Session Manager.
+
+- Kiểm tra IAM Role được gán cho EC2.
+
+- Kiểm tra trạng thái các Systems Manager VPC Endpoint.
+
+- Rà soát cấu hình Public Route Table và Private Route Table.
+
+Các bước kiểm tra này giúp xác minh quyền truy cập máy chủ riêng tư được kiểm soát thông qua cấu hình mạng và danh tính phù hợp.
+
+### 6. Rà soát giám sát và cấu hình
+
+Các dịch vụ giám sát và kiểm toán được rà soát để xác nhận hoạt động và cấu hình hạ tầng có thể được kiểm tra.
 
 **Amazon CloudWatch**
 
-Kiểm tra các chỉ số EC2 có sẵn, chẳng hạn:
-
-- `CPUUtilization`
-- `NetworkIn`
-- `NetworkOut`
-
-Những chỉ số này hỗ trợ theo dõi trạng thái hoạt động và mức sử dụng tài nguyên của EC2 instance.
+Kiểm tra các chỉ số EC2 hiện có và chỉ số hoạt động của EventBridge, bao gồm Matched Events và Invocations.
 
 **AWS CloudTrail**
 
-Kiểm tra cấu hình CloudTrail và lịch sử sự kiện có sẵn để xác định những hoạt động tài khoản và sự kiện quản lý đã được ghi nhận.
+Kiểm tra cấu hình kltn-trail và Event History để xem các hoạt động tài khoản đã được ghi nhận.
 
 **AWS Config**
 
-Kiểm tra danh sách tài nguyên và trạng thái ghi nhận cấu hình.
+Kiểm tra trạng thái Recorder, danh sách tài nguyên và kết quả đánh giá của các quy tắc bảo mật đã cấu hình.
 
-Trong quá trình triển khai, chức năng ghi nhận của AWS Config đã được bật và danh sách tài nguyên hiển thị 24 tài nguyên.
+Các Rule được sử dụng gồm:
 
-Trạng thái tuân thủ của từng quy tắc cần được kiểm tra riêng. Không nên mặc định tất cả tài nguyên đều tuân thủ khi chưa xem kết quả đánh giá.
+- cloudtrail-enabled
 
-#### 7. Rà soát tài nguyên và chi phí AWS
+- ec2-instance-no-public-ip
 
-Trước khi hoàn thành dự án, cần kiểm tra các tài nguyên AWS có thể phát sinh chi phí.
+- restricted-ssh
 
-Mở AWS Management Console và rà soát các dịch vụ sau:
+- vpc-default-security-group-closed
 
-- **EC2:** Kiểm tra các instance đang chạy và ổ đĩa được gắn.
-- **Elastic IP addresses:** Kiểm tra các địa chỉ IP đã cấp phát và trạng thái liên kết.
-- **EBS Volumes:** Rà soát những volume không còn cần thiết.
-- **Snapshots:** Kiểm tra các snapshot đang được lưu trữ.
-- **NAT Gateway:** Kiểm tra trạng thái và chi phí liên quan.
-- **Application Load Balancer:** Xem xét tài nguyên còn cần sử dụng hay không.
-- **Amazon RDS:** Kiểm tra instance cơ sở dữ liệu và cấu hình lưu trữ.
-- **AWS WAF:** Kiểm tra Web ACL và mức sử dụng liên quan.
-- **CloudWatch:** Rà soát các tài nguyên giám sát có thể phát sinh thêm chi phí.
+Trạng thái tuân thủ phải được xác định dựa trên kết quả đánh giá thực tế hiển thị trong AWS Config.
 
-Có thể kiểm tra chi phí ước tính thông qua **Billing and Cost Management**.
+**EventBridge và SNS**
 
-**Lưu ý quan trọng:** Dừng EC2 instance không đồng nghĩa với việc tất cả chi phí liên quan đều dừng. NAT Gateway, load balancer, RDS, ổ đĩa lưu trữ và các tài nguyên vẫn được giữ lại có thể tiếp tục phát sinh chi phí.
+Kiểm tra Rule KLTN-SG-Change-Alert và SNS Topic KLTN-Security-Alert để xác minh cấu hình thông báo về thay đổi Security Group.
 
-#### 8. Lưu bằng chứng và rà soát các tài nguyên cần dọn dẹp
+### 7. Rà soát tài nguyên và chi phí AWS
 
-Trước khi dừng hoặc xóa bất kỳ tài nguyên AWS nào, cần lưu lại ảnh chụp màn hình và kết quả kiểm thử phục vụ báo cáo cũng như video demo.
+Các tài nguyên AWS cần được kiểm tra trước và sau quá trình thử nghiệm để tránh phát sinh chi phí không cần thiết.
 
-Các bằng chứng nên lưu bao gồm:
+Các dịch vụ và tài nguyên cần xem xét gồm:
 
-1. Cấu hình VPC và subnet.
-2. Trạng thái EC2 instance và kết quả kiểm tra instance.
-3. Quy tắc inbound của Security Group EC2.
-4. Quy tắc inbound TCP 3306 của Security Group RDS.
-5. Kết quả kiểm tra kết nối EC2 đến RDS.
-6. Application Load Balancer và trạng thái healthy của target.
-7. Trang Nginx truy cập thông qua DNS name của ALB.
-8. Liên kết AWS WAF và thống kê yêu cầu.
-9. Các chỉ số EC2 trên CloudWatch.
-10. Lịch sử sự kiện CloudTrail.
-11. Trạng thái ghi nhận và danh sách tài nguyên AWS Config.
+- **EC2:** Kiểm tra Instance đang chạy và loại Instance.
 
-Sau khi lưu đầy đủ bằng chứng, tiến hành xác định những tài nguyên không còn cần thiết.
+- **EBS:** Kiểm tra Volume đang gắn và dung lượng lưu trữ không còn sử dụng.
 
-Chỉ dừng hoặc xóa tài nguyên sau khi đã kiểm tra các thành phần phụ thuộc và xác nhận chúng không còn cần cho báo cáo hoặc buổi trình diễn dự án.
+- **Elastic Load Balancing:** Kiểm tra Application Load Balancer và mức sử dụng.
 
-Không xóa các thành phần mạng dùng chung hoặc tài nguyên vẫn đang được những dịch vụ khác sử dụng.
+- **VPC Endpoint:** Kiểm tra các Endpoint đã cấu hình và chi phí liên quan.
 
-#### 9. Đánh giá tổng thể hạ tầng
+- **AWS WAF:** Kiểm tra Web ACL và chi phí sử dụng.
 
-Dựa trên quá trình triển khai và kiểm tra, có thể tổng hợp các kết quả chính như sau:
+- **CloudWatch:** Kiểm tra Metrics, Logs và các tài nguyên giám sát bổ sung.
 
-| Thành phần | Kết quả xác minh |
+- **CloudTrail và AWS Config:** Kiểm tra cấu hình ghi nhận và lưu trữ dữ liệu.
+
+- **SNS:** Kiểm tra Topic thông báo và Subscription.
+
+Billing and Cost Management có thể được sử dụng để xem chi phí theo dịch vụ và mức chi tiêu ước tính.
+
+Những tài nguyên không còn cần thiết cho quá trình kiểm thử nên được dừng hoặc xóa khi phù hợp. Các tài nguyên ghi nhật ký và kiểm toán cần được lưu giữ theo yêu cầu tài liệu của dự án.
+
+### 8. Tổng hợp kết quả kiểm tra
+
+| Hạng mục xác minh | Kết quả quan sát |
 |---|---|
-| VPC và hạ tầng mạng | Đã triển khai |
-| EC2 instance | Running; các kiểm tra trạng thái thành công |
-| Máy chủ web Nginx | Truy cập được thông qua ALB |
-| Application Load Balancer | Active; có một target healthy |
-| Kết nối EC2 đến RDS | Kết nối TCP cổng 3306 thành công |
-| AWS WAF | Đã liên kết với ALB; ghi nhận 30 yêu cầu |
-| CloudTrail | Đã tạo |
-| AWS Config | Đã bật recording; hiển thị 24 tài nguyên |
-| CloudWatch | Đã sử dụng để kiểm tra các chỉ số tài nguyên |
+| VPC KLTN-VPC | Đã cấu hình |
+| Private Subnet | Đã cấu hình hai Subnet |
+| EC2 KLTN-Web-Server | Đang hoạt động |
+| Public IPv4 của EC2 | Không được gán |
+| Session Manager | Kết nối thành công |
+| Nginx | Đang hoạt động |
+| Application Load Balancer | Đã triển khai; đã kiểm tra trạng thái Target |
+| AWS WAF | Đã liên kết với ALB |
+| Kiểm tra SQL Injection sau WAF | HTTP 403 |
+| Kiểm tra XSS sau WAF | HTTP 403 |
+| CloudTrail | Đã cấu hình Trail |
+| AWS Config | Đã bật ghi nhận |
+| EventBridge | Đã bật Rule theo dõi thay đổi Security Group |
+| SNS | Đã xác nhận Email Subscription |
 
-Các kết quả này thể hiện khả năng hoạt động của những thành phần hạ tầng AWS chính và các biện pháp bảo mật đã áp dụng trong dự án.
+### 9. Kết luận
 
-#### Kết luận
+Quá trình xác minh cuối cùng cho thấy các thành phần hạ tầng AWS chính và những biện pháp bảo mật được triển khai trong dự án đã hoạt động theo mục tiêu thiết kế.
 
-Trong phần cuối này, chúng ta đã rà soát và xác minh hạ tầng AWS được triển khai trong dự án.
+Máy chủ EC2 hoạt động trong Private Subnet và có thể được quản trị thông qua Systems Manager Session Manager mà không cần địa chỉ IP công khai hoặc quyền SSH inbound.
 
-Các bài kiểm tra xác nhận máy chủ web EC2 có thể truy cập thông qua Application Load Balancer, EC2 có thể thiết lập kết nối TCP đến cơ sở dữ liệu RDS MySQL và AWS WAF đã xử lý các yêu cầu truy cập web.
+Application Load Balancer cung cấp khả năng truy cập máy chủ web, trong khi AWS WAF chặn các yêu cầu thử nghiệm SQL Injection và XSS. CloudWatch, CloudTrail, AWS Config, EventBridge và SNS cung cấp thêm khả năng giám sát, kiểm toán, rà soát cấu hình và gửi thông báo.
 
-Bên cạnh đó, CloudWatch, CloudTrail và AWS Config cũng được kiểm tra để tìm hiểu cách AWS hỗ trợ giám sát, ghi nhận hoạt động và theo dõi cấu hình tài nguyên.
-
-Kết quả dự án thể hiện quá trình triển khai hạ tầng mạng AWS và áp dụng các biện pháp bảo mật nhằm bảo vệ tài nguyên trong môi trường điện toán đám mây.
+Dự án qua đó minh họa cách kết hợp các dịch vụ mạng, quản lý danh tính, bảo vệ ứng dụng web và giám sát của AWS nhằm cải thiện bảo mật hạ tầng, đồng thời kiểm soát việc sử dụng tài nguyên.

@@ -1,5 +1,5 @@
 ---
-title: "Self-Assessment"
+title: "Self-evaluation"
 date: 2026-10-30
 weight: 5
 chapter: false

@@ -1,9 +1,9 @@
 ---
-title: "Sharing and Feedback"
+title: "Feedback"
 date: 2026-10-30
 weight: 6
 chapter: false
-pre: " <b> . </b> "
+pre: " <b> 6. </b> "
 ---
 
 > During my participation in the First Cloud AI Journey (FCAJ) program, I had the opportunity to explore cloud computing technologies, improve my technical skills, and apply my academic knowledge to a practical project. The following are my reflections, experiences, and suggestions regarding the internship program.

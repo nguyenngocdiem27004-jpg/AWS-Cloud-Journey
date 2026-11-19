@@ -6,135 +6,139 @@ chapter: false
 pre: " <b> 4.3. </b> "
 ---
 
-#### Tổng quan về hạ tầng mạng AWS
+### 1. Tổng quan hạ tầng mạng AWS
 
-Amazon Virtual Private Cloud (Amazon VPC) cung cấp một môi trường mạng được cô lập về mặt logic trên AWS. Dịch vụ này cho phép quản trị viên cấu hình dải địa chỉ IP, subnet, bảng định tuyến và kết nối mạng cho các tài nguyên trên nền tảng đám mây.
+Amazon Virtual Private Cloud (Amazon VPC) cung cấp môi trường mạng được cô lập về mặt logic trong AWS. Dịch vụ cho phép quản trị viên xác định dải địa chỉ IP, tạo Subnet, cấu hình Route Table và kiểm soát kết nối mạng.
 
-Trong dự án này, hạ tầng mạng AWS được triển khai tại khu vực Châu Á Thái Bình Dương (Singapore) (`ap-southeast-1`). VPC được chia thành các public subnet và private subnet nhằm phân tách tài nguyên theo chức năng và yêu cầu truy cập.
+Trong dự án này, hạ tầng mạng được triển khai tại khu vực Asia Pacific (Singapore) (ap-southeast-1). VPC cung cấp ranh giới mạng cho dự án. Máy chủ EC2 được đặt trong Private Subnet, trong khi Route Table và Internet Gateway xác định các tuyến kết nối khả dụng.
 
-Các thành phần mạng chính bao gồm Amazon VPC, public subnet, private subnet, Internet Gateway, NAT Gateway và route table. Những thành phần này cung cấp khả năng kết nối mạng đồng thời hỗ trợ kiểm soát truy cập đến các tài nguyên bên trong VPC.
+Môi trường sử dụng VPC Endpoint để cung cấp kết nối riêng tư đến các dịch vụ AWS được hỗ trợ. Cách tiếp cận này cho phép EC2 trong Private Subnet giao tiếp với Systems Manager mà không cần NAT Gateway hoặc địa chỉ IP công khai.
 
 #### Mục tiêu triển khai
 
-- Tạo và cấu hình Amazon VPC với dải địa chỉ IP phù hợp.
-- Chia VPC thành các public subnet và private subnet trên các Availability Zone.
-- Gắn Internet Gateway để cung cấp kết nối Internet cho public subnet.
-- Cấu hình NAT Gateway để cho phép tài nguyên trong private subnet truy cập Internet khi cần thiết.
-- Cấu hình route table và liên kết subnet nhằm kiểm soát lưu lượng mạng.
-- Chuẩn bị môi trường mạng để triển khai Amazon EC2 và Amazon RDS.
+- Sử dụng Amazon VPC để cô lập mạng của dự án.
+
+- Tổ chức tài nguyên trong VPC và các Private Subnet.
+
+- Cấu hình Route Table và liên kết Subnet.
+
+- Gắn Internet Gateway vào VPC.
+
+- Cấu hình VPC Endpoint để truy cập riêng tư đến các dịch vụ AWS được hỗ trợ.
+
+- Chuẩn bị hạ tầng mạng cho EC2 web server và Application Load Balancer.
 
 #### Thiết kế địa chỉ IP
 
-Dự án sử dụng dải địa chỉ IP riêng `10.0.0.0/16` cho VPC. Dải địa chỉ này cung cấp đủ không gian địa chỉ để chia thành nhiều public subnet và private subnet.
+Dự án sử dụng dải địa chỉ IPv4 10.0.0.0/16 cho VPC.
 
 | Thành phần | Tên tài nguyên | Dải IP / Cấu hình |
 |---|---|---|
-| Amazon VPC | KLTN-VPC | `10.0.0.0/16` |
-| Public Subnet | Được cấu hình trong KLTN-VPC | Kiểm tra CIDR thực tế trên AWS Console |
-| Private Subnet 2 | KLTN-Private-Subnet-2 | `10.0.4.0/24` |
-| Internet Gateway | Gắn với KLTN-VPC | Cung cấp kết nối Internet cho public subnet |
-| NAT Gateway | Được cấu hình trong public subnet | Cho phép private subnet truy cập Internet theo chiều đi ra |
-| Private Route Table | KLTN-Private-RT | Định tuyến cho các private subnet được liên kết |
+| VPC | KLTN-VPC | 10.0.0.0/16 |
+| Private Subnet 1 | KLTN-Private-Subnet | 10.0.2.0/24 |
+| Private Subnet 2 | KLTN-Private-Subnet-2 | 10.0.4.0/24 |
+| Private Route Table | KLTN-Private-RT | Liên kết với các Private Subnet |
+| Public Route Table | KLTN-Public-RT | Sử dụng cho định tuyến mạng công khai |
+| Internet Gateway | Gắn với KLTN-VPC | Cung cấp kết nối Internet cho tài nguyên có định tuyến phù hợp |
+| VPC Endpoint | SSM và SSMMessages | Kết nối riêng tư đến Systems Manager |
 
-Dải CIDR và Availability Zone của các subnet còn lại cần được kiểm tra trực tiếp trên Amazon VPC Console để bảo đảm tài liệu khớp với hệ thống đã triển khai.
+### 2. Kiểm tra cấu hình Amazon VPC
 
-#### Triển khai Amazon VPC
+Dự án sử dụng VPC đã được tạo với tên KLTN-VPC.
 
-Amazon VPC là một mạng ảo được cô lập về mặt logic, cho phép quản trị viên kiểm soát dải địa chỉ IP, subnet, định tuyến và kết nối mạng.
-
-Dự án sử dụng VPC đã được tạo với tên `KLTN-VPC`.
-
-Các bước kiểm tra cấu hình VPC:
+Các bước kiểm tra:
 
 1. Truy cập AWS Management Console.
-2. Mở dịch vụ **Amazon VPC**.
+2. Mở dịch vụ **VPC**.
 3. Chọn **Your VPCs**.
-4. Tìm và chọn `KLTN-VPC`.
-5. Kiểm tra dải IPv4 CIDR và các thiết lập mạng khác.
-6. Xác nhận VPC đang hoạt động và cấu hình phù hợp với thiết kế của dự án.
+4. Tìm và chọn KLTN-VPC.
+5. Kiểm tra dải IPv4 CIDR.
+6. Xác nhận trạng thái VPC là khả dụng.
 
-VPC sử dụng dải địa chỉ IPv4 CIDR `10.0.0.0/16`.
+VPC được cấu hình với dải IPv4 10.0.0.0/16.
 
-#### Tạo và cấu hình Subnet
+![Cấu hình KLTN-VPC và dải IPv4 CIDR](/images/4-Workshop/4.3-AWS%20Network%20Infrastructure/vpc-details.png)
 
-Subnet chia VPC thành các phân đoạn mạng nhỏ hơn. Public subnet được sử dụng cho các tài nguyên cần có tuyến kết nối đến Internet Gateway, trong khi private subnet được sử dụng cho các tài nguyên không nên được truy cập trực tiếp từ Internet.
+### 3. Kiểm tra Subnet
 
-Dự án sử dụng hai public subnet và hai private subnet.
+Subnet chia VPC thành các phân đoạn mạng nhỏ hơn, giúp phân tách tài nguyên theo chức năng và yêu cầu truy cập.
 
-Các bước kiểm tra cấu hình subnet:
+Các bước kiểm tra:
 
-1. Trong Amazon VPC Console, chọn **Subnets**.
-2. Lọc danh sách subnet theo VPC `KLTN-VPC`.
-3. Kiểm tra tên, dải IPv4 CIDR và Availability Zone của cả bốn subnet.
-4. Xác nhận public subnet và private subnet sử dụng các dải mạng riêng biệt.
-5. Kiểm tra route table được liên kết với từng subnet.
-6. Đối với public subnet cần tự động cấp địa chỉ IPv4 công khai, kiểm tra tùy chọn **Enable auto-assign public IPv4 address**.
+1. Trong VPC Console, chọn **Subnets**.
+2. Lọc danh sách theo VPC KLTN-VPC.
+3. Kiểm tra tên, IPv4 CIDR và Availability Zone của từng Subnet.
+4. Kiểm tra Route Table được liên kết với từng Subnet.
+5. Xác nhận các Private Subnet sử dụng bảng định tuyến riêng tương ứng.
 
-Một private subnet được sử dụng trong dự án có tên `KLTN-Private-Subnet-2`, với dải CIDR `10.0.4.0/24`.
+Hai Private Subnet được sử dụng trong dự án gồm:
 
-#### Tạo và gắn Internet Gateway
+- KLTN-Private-Subnet: 10.0.2.0/24
 
-Internet Gateway cho phép các tài nguyên trong VPC giao tiếp với Internet khi đã có cấu hình định tuyến và bảo mật phù hợp.
+- KLTN-Private-Subnet-2: 10.0.4.0/24
 
-Các bước kiểm tra cấu hình Internet Gateway:
+![Hai Private Subnet trong KLTN-VPC](/images/4-Workshop/4.3-AWS%20Network%20Infrastructure/subnets.png)
 
-1. Trong Amazon VPC Console, chọn **Internet gateways**.
-2. Tìm Internet Gateway được gắn với `KLTN-VPC`.
-3. Chọn Internet Gateway và kiểm tra thông tin chi tiết.
-4. Xác nhận trạng thái cho biết Internet Gateway đã được gắn với đúng VPC.
+### 4. Internet Gateway và Route Table
 
-Internet Gateway được sử dụng trong public route table để tạo tuyến kết nối ra Internet.
+Internet Gateway được gắn với VPC để hỗ trợ kết nối Internet cho những tài nguyên có cấu hình định tuyến và quy tắc bảo mật cho phép.
 
-#### Cấu hình NAT Gateway
+Dự án có Public Route Table tên KLTN-Public-RT và Private Route Table tên KLTN-Private-RT.
 
-NAT Gateway cho phép các tài nguyên trong private subnet chủ động khởi tạo kết nối ra Internet mà không cho phép các kết nối không được yêu cầu từ Internet đi vào.
+Các bước kiểm tra:
 
-Các bước kiểm tra cấu hình NAT Gateway:
+1. Mở **Route tables** trong VPC Console.
+2. Chọn KLTN-Public-RT để xem các tuyến đường và Subnet liên kết.
+3. Chọn KLTN-Private-RT.
+4. Mở tab **Routes** để xem cấu hình định tuyến.
+5. Mở **Subnet associations** để xác nhận các Private Subnet được liên kết.
 
-1. Trong Amazon VPC Console, chọn **NAT gateways**.
-2. Tìm NAT Gateway được cấu hình cho dự án.
-3. Kiểm tra trạng thái là **Available**.
-4. Xác nhận NAT Gateway được triển khai trong một public subnet.
-5. Kiểm tra private route table để xác nhận tuyến mặc định trỏ đến NAT Gateway.
+Private Route Table được sử dụng để tách biệt định tuyến của mạng riêng với mạng công khai. NAT Gateway không thuộc môi trường đang triển khai hiện tại.
 
-NAT Gateway cung cấp khả năng truy cập Internet theo chiều đi ra cho các tài nguyên trong private subnet khi cần thiết.
+![Liên kết Subnet trong các Route Table](/images/4-Workshop/4.3-AWS%20Network%20Infrastructure/route-tables.png)
 
-#### Cấu hình Route Table
+### 5. Cấu hình VPC Endpoint
 
-Route table xác định hướng chuyển tiếp của lưu lượng mạng. Public subnet và private subnet sử dụng các bảng định tuyến với cấu hình khác nhau.
+VPC Endpoint cho phép tài nguyên bên trong VPC kết nối đến các dịch vụ AWS được hỗ trợ mà không cần truyền lưu lượng qua tuyến Internet công khai.
 
-Đối với public route table:
+Dự án sử dụng các VPC Endpoint liên quan đến Systems Manager để hỗ trợ quản trị EC2 thông qua kết nối riêng tư.
 
-1. Trong Amazon VPC Console, chọn **Route tables**.
-2. Chọn route table được liên kết với các public subnet.
-3. Mở tab **Routes**.
-4. Kiểm tra tuyến `0.0.0.0/0` trỏ đến Internet Gateway.
-5. Mở **Subnet associations** và kiểm tra các public subnet được liên kết.
+Các Endpoint đã cấu hình gồm:
 
-Đối với private route table:
+- KLTN-SSM-Endpoint
 
-1. Chọn `KLTN-Private-RT`.
-2. Mở tab **Routes**.
-3. Kiểm tra tuyến `0.0.0.0/0` trỏ đến NAT Gateway nếu private subnet cần truy cập Internet.
-4. Mở **Subnet associations**.
-5. Kiểm tra các private subnet được liên kết với route table này.
+- KLTN-SSMMessages-Endpoint
 
-Cấu hình route table giúp phân tách lưu lượng mạng public và private, đồng thời đáp ứng yêu cầu truy cập của hệ thống.
+Các bước kiểm tra:
 
-#### Kiểm tra cấu hình triển khai
+1. Mở VPC Console.
+2. Chọn **Endpoints**.
+3. Tìm các Endpoint liên quan đến Systems Manager.
+4. Kiểm tra tên dịch vụ, VPC liên kết, cấu hình Subnet và Security Group của Endpoint.
+5. Xác nhận trạng thái Endpoint là **Available**.
 
-Sau khi kiểm tra cấu hình mạng, cần xác nhận các nội dung sau:
+Security Group của Endpoint cho phép lưu lượng HTTPS trên TCP port 443 từ Security Group của EC2.
 
-- VPC `KLTN-VPC` sử dụng dải CIDR `10.0.0.0/16`.
-- VPC có hai public subnet và hai private subnet.
-- Internet Gateway đã được gắn với đúng VPC.
-- Public route table có tuyến mặc định trỏ đến Internet Gateway.
-- NAT Gateway đang ở trạng thái khả dụng và được đặt trong public subnet.
-- Private route table sử dụng NAT Gateway làm tuyến mặc định khi cần truy cập Internet theo chiều đi ra.
-- Các subnet được liên kết với route table phù hợp với thiết kế mạng.
+### 6. Kiểm tra cấu hình mạng
+
+Sau khi rà soát môi trường mạng, cần xác nhận:
+
+- KLTN-VPC sử dụng dải 10.0.0.0/16.
+
+- Hai Private Subnet tồn tại với các dải CIDR tương ứng.
+
+- Public Route Table và Private Route Table khả dụng.
+
+- Internet Gateway được gắn với đúng VPC.
+
+- SSM và SSMMessages VPC Endpoint có trạng thái Available.
+
+- EC2 trong Private Subnet có thể sử dụng các Endpoint đã cấu hình để kết nối Systems Manager.
 
 #### Kết quả mong đợi
 
-Sau khi hoàn thành phần này, hạ tầng mạng AWS cung cấp nền tảng để triển khai và kết nối các tài nguyên trên môi trường đám mây. Public subnet và private subnet giúp phân tách tài nguyên theo yêu cầu truy cập, trong khi Internet Gateway, NAT Gateway và route table kiểm soát khả năng kết nối mạng.
+VPC cung cấp môi trường mạng riêng biệt cho dự án. Hai Private Subnet, Route Table, Internet Gateway và VPC Endpoint giúp tổ chức kết nối và giảm mức độ phơi nhiễm trực tiếp của EC2.
 
-Phần tiếp theo tập trung vào Amazon EC2 và Security Groups, được sử dụng để triển khai máy chủ web và kiểm soát quyền truy cập mạng đến EC2 instance.
+Phần tiếp theo tập trung vào triển khai EC2 web server và cấu hình Security Group để kiểm soát truy cập mạng.
+
+==================================================

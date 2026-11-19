@@ -1,51 +1,55 @@
 ---
-title: "Các yêu cầu chuẩn bị"
+title: "Điều kiện tiên quyết"
 date: 2026-10-29
 weight: 2
 chapter: false
 pre: " <b> 4.2. </b> "
 ---
 
-#### Tổng quan về môi trường triển khai
+### 1. Tổng quan môi trường triển khai
 
-Để triển khai hệ thống bảo mật hạ tầng trên AWS, cần chuẩn bị tài khoản AWS, máy tính phục vụ quản trị, kết nối Internet và thiết kế mạng cơ bản.
+Trước khi triển khai môi trường bảo mật hạ tầng AWS, cần chuẩn bị một số yêu cầu cơ bản như tài khoản AWS, máy tính quản trị, kế hoạch mạng và quyền truy cập phù hợp.
 
-Dự án sử dụng Amazon Web Services (AWS) để xây dựng và quản lý hạ tầng đám mây. Môi trường triển khai được đặt tại khu vực Singapore (`ap-southeast-1`), nơi các tài nguyên mạng, máy chủ, cơ sở dữ liệu và bảo mật được cấu hình.
+Dự án được triển khai tại khu vực Asia Pacific (Singapore) (ap-southeast-1). Môi trường sử dụng Amazon VPC, EC2, Application Load Balancer, AWS WAF, IAM, AWS Systems Manager cùng các dịch vụ giám sát và ghi nhật ký.
 
-Hạ tầng bao gồm Amazon VPC với các Public Subnet và Private Subnet, Internet Gateway, NAT Gateway, Route Table, máy chủ web EC2, cơ sở dữ liệu MySQL trên RDS và Application Load Balancer. Các dịch vụ AWS khác được sử dụng để quản lý quyền truy cập, bảo vệ lưu lượng web và kiểm tra hoạt động của hạ tầng.
+![AWS Management Console tại khu vực Singapore](/images/4-Workshop/4.2-Prerequisites/aws-region.png)
 
-#### Các thành phần cần thiết
+### 2. Các thành phần cần thiết
 
-- **Tài khoản Amazon Web Services (AWS):** Dùng để truy cập AWS Management Console và tạo hoặc quản lý các tài nguyên trên đám mây.
+- **Tài khoản AWS:** Dùng để truy cập AWS Management Console và triển khai các tài nguyên đám mây.
 
-- **AWS Management Console:** Được sử dụng để cấu hình và quản lý các dịch vụ như Amazon VPC, EC2, RDS, IAM, Elastic Load Balancing và AWS WAF.
+- **AWS Management Console:** Giao diện quản lý và cấu hình các dịch vụ AWS.
 
-- **IAM User và quyền truy cập:** Được sử dụng để truy cập các dịch vụ AWS và thực hiện những thao tác cần thiết cho dự án. Tài khoản cần có quyền phù hợp với các tài nguyên được cấu hình.
+- **Danh tính IAM được cấp quyền:** IAM User hoặc Role cần có đủ quyền để tạo và quản lý các tài nguyên được sử dụng trong dự án.
 
-- **Amazon VPC:** Được sử dụng để xây dựng môi trường mạng đám mây, bao gồm Public Subnet, Private Subnet, Internet Gateway, NAT Gateway và Route Table.
+- **Amazon VPC:** Cung cấp môi trường mạng riêng biệt cho hạ tầng đám mây.
 
-- **Amazon EC2:** Được sử dụng để triển khai máy chủ web và cung cấp môi trường tính toán phục vụ kiểm tra truy cập mạng.
+- **Amazon EC2:** Chạy máy chủ web Nginx bên trong Private Subnet.
 
-- **Amazon RDS:** Được sử dụng để triển khai và quản lý cơ sở dữ liệu MySQL trong môi trường AWS.
+- **VPC Endpoint:** Cung cấp kết nối riêng tư giữa VPC và các dịch vụ AWS được hỗ trợ, bao gồm Systems Manager.
 
-- **Application Load Balancer (ALB) và AWS WAF:** Được sử dụng để cung cấp khả năng truy cập đến máy chủ web và áp dụng các quy tắc bảo vệ lưu lượng truy cập web.
+- **Application Load Balancer và AWS WAF:** Hỗ trợ phân phối và bảo vệ lưu lượng truy cập web.
 
-- **Máy tính quản trị:** Được sử dụng để truy cập AWS Management Console, cấu hình tài nguyên, kết nối đến EC2 và thực hiện kiểm tra thông qua trình duyệt web hoặc cửa sổ dòng lệnh.
+- **Các dịch vụ giám sát và ghi nhật ký:** CloudWatch, CloudTrail, AWS Config, EventBridge và SNS hỗ trợ giám sát, kiểm toán, đánh giá cấu hình và gửi thông báo.
 
-#### Các yêu cầu trước khi triển khai
+- **Máy tính quản trị:** Cần có trình duyệt web hiện đại và terminal để truy cập AWS Console cũng như thực hiện các bước kiểm tra.
 
-Trước khi bắt đầu workshop, cần đảm bảo các yêu cầu sau:
+### 3. Yêu cầu trước khi triển khai
 
-1. Đã tạo tài khoản AWS và có thể truy cập AWS Management Console.
-2. Có IAM User hoặc danh tính được cấp quyền phù hợp để cấu hình các dịch vụ AWS cần thiết.
-3. Có máy tính với trình duyệt web hiện đại và kết nối Internet ổn định.
-4. Đã chọn AWS Region là Asia Pacific (Singapore) (`ap-southeast-1`).
-5. Đã chuẩn bị kế hoạch địa chỉ IP cho VPC và các Public Subnet, Private Subnet. Các dải địa chỉ CIDR được lựa chọn không được trùng lặp.
-6. Nên có kiến thức cơ bản về điện toán đám mây, địa chỉ IP, chia subnet và kiểm soát truy cập mạng.
-7. Cần kiểm tra giá dịch vụ AWS và mức sử dụng tài nguyên trước khi triển khai để tránh phát sinh chi phí không cần thiết.
+Trước khi bắt đầu workshop, cần đảm bảo:
 
-#### Kết quả mong đợi
+1. Có tài khoản AWS và truy cập được AWS Management Console.
+2. Tài khoản có đủ quyền để cấu hình các dịch vụ AWS cần thiết.
+3. Có kết nối Internet ổn định và trình duyệt web hiện đại.
+4. Đã chọn khu vực Asia Pacific (Singapore) (ap-southeast-1).
+5. Đã lên kế hoạch CIDR cho VPC và các Subnet, đảm bảo các dải địa chỉ không bị trùng lặp.
+6. Nên có kiến thức cơ bản về địa chỉ IP, chia mạng con, định tuyến và bảo mật mạng.
+7. Cần xem xét giá dịch vụ AWS và mức sử dụng tài nguyên để tránh phát sinh chi phí không cần thiết.
 
-Sau khi hoàn thành bước chuẩn bị, chúng ta sẽ có tài khoản AWS có thể truy cập, khu vực triển khai phù hợp, quyền truy cập cần thiết và kế hoạch địa chỉ IP ban đầu.
+### 4. Kết quả mong đợi
 
-Những bước chuẩn bị này tạo nền tảng cho việc xây dựng mạng VPC, triển khai EC2 và RDS, cấu hình kiểm soát truy cập, bảo vệ lưu lượng web và đánh giá bảo mật hạ tầng trong các phần tiếp theo.
+Sau giai đoạn chuẩn bị, tài khoản AWS, khu vực triển khai, quyền truy cập và kế hoạch địa chỉ mạng đã sẵn sàng.
+
+Đây là cơ sở để xây dựng môi trường VPC, triển khai EC2 trong mạng riêng, cấu hình truy cập an toàn, bảo vệ lưu lượng web và giám sát hoạt động của hạ tầng.
+
+

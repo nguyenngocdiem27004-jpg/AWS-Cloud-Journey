@@ -6,138 +6,155 @@ chapter: false
 pre: " <b> 4.4. </b> "
 ---
 
-#### Overview of Amazon EC2
+### 1. Overview of Amazon EC2
 
-Amazon Elastic Compute Cloud (Amazon EC2) is an AWS service that provides virtual servers in the cloud. It allows users to run applications and services without maintaining physical servers.
+Amazon Elastic Compute Cloud (Amazon EC2) provides virtual servers in the AWS Cloud. It allows users to deploy and manage computing resources without maintaining physical servers.
 
-In this project, an EC2 instance named `KLTN-Web-Server` is deployed to host the Nginx web server. The instance is part of the private network architecture and receives web traffic through the Application Load Balancer (ALB).
+In this project, an EC2 instance named KLTN-Web-Server hosts the Nginx web server. The instance is deployed in a private subnet and receives web traffic through the Application Load Balancer (ALB).
 
-The instance is also configured with an IAM role to support secure management through AWS Systems Manager Session Manager.
+The instance does not have a public IPv4 address. Administrative access is provided through AWS Systems Manager Session Manager.
 
 #### Deployment Objectives
 
-- Deploy an EC2 instance for the project's web server.
-- Place the instance in the appropriate subnet of `KLTN-VPC`.
-- Configure an IAM role to support Systems Manager access.
-- Use Session Manager to access and manage the instance without requiring direct SSH access.
-- Install and verify the Nginx web server.
-- Configure Security Groups to control traffic between the ALB, EC2 instance, and RDS database.
+- Deploy an EC2 instance inside the project VPC.
 
-#### EC2 Instance Specifications
+- Place the instance in a private subnet.
+
+- Attach an IAM role for Systems Manager access.
+
+- Use Session Manager for secure administration.
+
+- Install and verify the Nginx web server.
+
+- Configure Security Groups to restrict network traffic.
+
+### 2. EC2 Instance Configuration
 
 | Component | Configuration |
 |---|---|
-| Instance Name | `KLTN-Web-Server` |
-| Operating System | Ubuntu Server |
-| VPC | `KLTN-VPC` |
-| Subnet | Private subnet |
+| Instance Name | KLTN-Web-Server |
+| Instance Type | t3.micro |
+| VPC | KLTN-VPC |
+| Subnet | KLTN-Private-Subnet |
+| Private IPv4 | 10.0.2.35 |
+| Public IPv4 | Not assigned |
 | Web Server | Nginx |
 | Management Method | AWS Systems Manager Session Manager |
-| IAM Role | EC2 IAM role for Systems Manager access |
+| IAM Role | KLTN-EC2-SSM-Role |
 
-#### Deploying an EC2 Instance
+![KLTN-Web-Server EC2 instance configuration](/images/4-Workshop/4.4-EC2%20Security%20Group/ec2-instance.png)
 
-Follow these steps:
+#### Reviewing the EC2 Instance
 
-1. Access the **AWS Management Console**.
-2. Open the **Amazon EC2** service.
-3. Select **Instances**, then click **Launch instances**.
-4. Enter `KLTN-Web-Server` as the instance name.
-5. Select an appropriate Ubuntu Server Amazon Machine Image (AMI).
-6. Choose an instance type according to the project requirements and available budget.
-7. Under **Network settings**, select the VPC `KLTN-VPC`.
-8. Select the appropriate private subnet.
-9. Configure the Security Group for the required network connections.
-10. Attach the IAM role that allows the instance to be managed through AWS Systems Manager.
-11. Configure the storage capacity according to the project requirements.
-12. Review the configuration and click **Launch instance**.
+To review the deployed instance:
 
-After launching the instance, verify that its state is **Running** and that its status checks have passed.
+1. Open the **Amazon EC2** service.
+2. Select **Instances**.
+3. Find KLTN-Web-Server.
+4. Review its instance type, VPC, subnet, private IP address, and public IP address.
+5. Confirm that the instance is running and its status checks have passed.
 
-#### Configuring IAM Role for Systems Manager
+The instance is deployed in the private network to reduce direct exposure to the Internet.
 
-AWS Systems Manager Session Manager provides a way to access an EC2 instance without opening an inbound SSH port or managing SSH key pairs.
+![EC2 network details showing its private IP and no public IPv4 address](/images/4-Workshop/4.4-EC2%20Security%20Group/ec2-network.png)
 
-To use Session Manager, the EC2 instance must have an IAM role with the required Systems Manager permissions.
+### 3. Configuring IAM Role for Systems Manager
 
-The configuration process includes:
+AWS Systems Manager Session Manager allows administrators to access an EC2 instance without opening an inbound SSH port or managing SSH key pairs.
 
-1. Open the **IAM** service in the AWS Management Console.
-2. Create or select an IAM role for EC2.
-3. Attach the required Systems Manager permissions, such as the `AmazonSSMManagedInstanceCore` policy.
-4. Return to the EC2 console.
-5. Select the instance `KLTN-Web-Server`.
-6. Attach the IAM role to the instance if it has not already been assigned.
-7. Verify that the instance can connect to Systems Manager.
+The project uses the IAM role KLTN-EC2-SSM-Role with the AWS-managed policy AmazonSSMManagedInstanceCore.
 
-After the configuration is complete, select the EC2 instance and use **Connect** → **Session Manager** to open a terminal session.
+To review the role:
 
-#### Configuring Security Groups
+1. Open the **IAM** service.
+2. Select **Roles**.
+3. Find KLTN-EC2-SSM-Role.
+4. Review its trusted entity and attached permissions.
+5. Confirm that the role is assigned to KLTN-Web-Server.
 
-A Security Group acts as a virtual firewall that controls inbound and outbound traffic for AWS resources. It helps restrict network access to only the connections required by the system.
+The EC2 instance uses this role to communicate with Systems Manager.
 
-In this project, Security Groups are configured to control communication between the Application Load Balancer, EC2 web server, and RDS database.
+### 4. Accessing the Instance Through Session Manager
 
-The main access rules follow this structure:
+To establish a management session:
 
-| Resource | Protocol | Port | Source / Destination | Purpose |
-|---|---|---|---|---|
-| ALB Security Group | TCP | 80 | Client access, according to the ALB configuration | Receive web requests |
-| EC2 Security Group | TCP | 80 | ALB Security Group | Allow the ALB to forward HTTP traffic to Nginx |
-| RDS Security Group | TCP | 3306 | EC2 Security Group | Allow the EC2 instance to connect to MySQL |
+1. Open the **EC2** console.
+2. Select KLTN-Web-Server.
+3. Click **Connect**.
+4. Select **Session Manager**.
+5. Start the session.
 
-The EC2 Security Group does not need a public SSH inbound rule when Session Manager is used for administration. Monitoring ports such as `3000`, `9090`, and `9100` are not included because Grafana, Prometheus, and Node Exporter are not part of this deployment.
+The session provides terminal access without requiring a public IP address or inbound SSH access.
 
-**Security considerations:**
+### 5. Configuring Security Groups
 
-- Allow HTTP traffic to the EC2 instance only from the ALB Security Group.
-- Allow MySQL traffic to RDS only from the EC2 Security Group.
-- Avoid exposing administrative ports directly to the Internet.
-- Apply the principle of least privilege when defining inbound and outbound rules.
-- Security Groups are stateful, so response traffic for permitted connections is automatically allowed.
+A Security Group acts as a virtual firewall for AWS resources. It controls inbound and outbound traffic according to defined rules.
 
-#### Installing and Verifying Nginx
+The project applies Security Groups to restrict access to the web server and supporting network components.
 
-Nginx is used as the web server running on the EC2 instance.
+| Component | Protocol | Port | Purpose |
+|---|---|---|---|
+| ALB Security Group | TCP | 80 | Receive HTTP requests |
+| EC2 Security Group | TCP | 80 | Allow HTTP traffic forwarded by the ALB |
+| VPC Endpoint Security Group | TCP | 443 | Allow HTTPS communication from the EC2 instance |
 
-After connecting to the instance through Session Manager, the administrator can install Nginx on Ubuntu using the following commands:
+The EC2 Security Group is configured to allow web traffic from the ALB Security Group rather than directly from arbitrary Internet sources.
+
+No inbound SSH rule is required for administration because Session Manager is used.
+
+![EC2 Security Group rules](/images/4-Workshop/4.4-EC2%20Security%20Group/security-group.png)
+
+### 6. Installing and Verifying Nginx
+
+Nginx is the web server installed on the EC2 instance.
+
+After connecting through Session Manager, the following commands can be used on Ubuntu:
 
 ```bash
 sudo apt update
 sudo apt install nginx -y
 ```
 
-Start the Nginx service and configure it to start automatically:
+Start and enable the service:
 
 ```bash
 sudo systemctl start nginx
 sudo systemctl enable nginx
 ```
 
-Check the service status:
+Check the service:
 
 ```bash
 sudo systemctl status nginx
 ```
 
-If Nginx is running correctly, the web server can respond to HTTP requests forwarded by the Application Load Balancer.
+To verify the local web server response:
 
-#### Verifying EC2 and Security Group Configuration
+```bash
+curl -I http://localhost
+```
 
-After completing the configuration, verify the following:
+A successful HTTP response confirms that Nginx is responding locally on the instance.
 
-- The EC2 instance `KLTN-Web-Server` is in the **Running** state.
-- The instance status checks have passed.
-- The instance has the required IAM role for Systems Manager.
-- Session Manager can establish a session with the instance.
-- The Nginx service is running.
-- The EC2 Security Group allows HTTP traffic from the ALB Security Group.
-- The RDS Security Group allows MySQL traffic on port `3306` from the EC2 Security Group.
+### 7. Verification Results
 
-Network connectivity between EC2 and RDS can also be checked separately to verify that the required database port is reachable.
+The following configurations were verified during implementation:
+
+- KLTN-Web-Server is running.
+
+- The instance uses private IP address 10.0.2.35.
+
+- No public IPv4 address is assigned.
+
+- The instance has the KLTN-EC2-SSM-Role IAM role.
+
+- Session Manager can establish a terminal session.
+
+- Nginx is running and responds to local HTTP requests.
 
 #### Expected Results
 
-After completing this section, the project has an EC2 instance running Nginx as its web server. Administrative access is provided through AWS Systems Manager Session Manager, while Security Groups restrict communication between the ALB, EC2 instance, and RDS database.
+The project has a private EC2 web server running Nginx. Session Manager provides administrative access, while Security Groups restrict network communication to the required traffic.
 
-These configurations provide a foundation for deploying and protecting the web service within the AWS infrastructure.
+This configuration reduces direct exposure of the server and provides a foundation for web traffic protection through the Application Load Balancer and AWS WAF.
+

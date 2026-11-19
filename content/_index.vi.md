@@ -35,7 +35,7 @@ chapter: false
 
 1. [Nhật ký thực tập](1-Worklog/)
 2. [Đề xuất dự án](2-Proposal/)
-3. [Các sự kiện đã tham gia](4-Events-Participated/)
-4. [Workshop](5-Workshop/)
-5. [Tự đánh giá](6-Self-Assessment/)
-6. [Chia sẻ và đóng góp ý kiến](7-Sharing-and-Feedback/)
+3. [Các sự kiện đã tham gia](3-Events-Participated/)
+4. [Workshop](4-Workshop/)
+5. [Tự đánh giá](5-Self-evaluation/)
+6. [Đóng góp ý kiến](6-Feedback/)

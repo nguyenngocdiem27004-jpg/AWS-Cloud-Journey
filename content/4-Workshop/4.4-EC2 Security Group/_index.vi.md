@@ -6,138 +6,156 @@ chapter: false
 pre: " <b> 4.4. </b> "
 ---
 
-#### Tổng quan về Amazon EC2
+### 1. Tổng quan về Amazon EC2
 
-Amazon Elastic Compute Cloud (Amazon EC2) là dịch vụ AWS cung cấp máy chủ ảo trên nền tảng đám mây. Dịch vụ này cho phép người dùng triển khai ứng dụng và dịch vụ mà không cần duy trì máy chủ vật lý.
+Amazon Elastic Compute Cloud (Amazon EC2) cung cấp máy chủ ảo trên AWS Cloud. Dịch vụ cho phép triển khai và quản lý tài nguyên tính toán mà không cần duy trì máy chủ vật lý.
 
-Trong dự án này, một EC2 instance có tên `KLTN-Web-Server` được triển khai để chạy máy chủ web Nginx. Instance thuộc kiến trúc mạng riêng và nhận lưu lượng truy cập web thông qua Application Load Balancer (ALB).
+Trong dự án này, EC2 instance có tên KLTN-Web-Server được sử dụng để chạy máy chủ web Nginx. Instance được triển khai trong Private Subnet và nhận lưu lượng truy cập web thông qua Application Load Balancer (ALB).
 
-Instance cũng được cấu hình IAM role để hỗ trợ quản trị an toàn thông qua AWS Systems Manager Session Manager.
+Instance không được gán địa chỉ IPv4 công khai. Việc quản trị được thực hiện thông qua AWS Systems Manager Session Manager.
 
 #### Mục tiêu triển khai
 
-- Triển khai EC2 instance phục vụ máy chủ web của dự án.
-- Đặt instance trong subnet phù hợp thuộc `KLTN-VPC`.
-- Cấu hình IAM role để hỗ trợ truy cập thông qua Systems Manager.
-- Sử dụng Session Manager để truy cập và quản trị instance mà không cần SSH trực tiếp.
-- Cài đặt và kiểm tra hoạt động của máy chủ web Nginx.
-- Cấu hình Security Group để kiểm soát lưu lượng giữa ALB, EC2 và RDS.
+- Triển khai EC2 trong VPC của dự án.
 
-#### Thông số EC2 Instance
+- Đặt instance trong Private Subnet.
+
+- Gắn IAM Role phục vụ kết nối Systems Manager.
+
+- Sử dụng Session Manager để quản trị an toàn.
+
+- Cài đặt và kiểm tra máy chủ web Nginx.
+
+- Cấu hình Security Group để giới hạn lưu lượng mạng.
+
+### 2. Cấu hình EC2 Instance
 
 | Thành phần | Cấu hình |
 |---|---|
-| Instance Name | `KLTN-Web-Server` |
-| Hệ điều hành | Ubuntu Server |
-| VPC | `KLTN-VPC` |
-| Subnet | Private subnet |
+| Tên Instance | KLTN-Web-Server |
+| Loại Instance | t3.micro |
+| VPC | KLTN-VPC |
+| Subnet | KLTN-Private-Subnet |
+| Private IPv4 | 10.0.2.35 |
+| Public IPv4 | Không được gán |
 | Web Server | Nginx |
 | Phương thức quản trị | AWS Systems Manager Session Manager |
-| IAM Role | IAM role dành cho EC2 để truy cập Systems Manager |
+| IAM Role | KLTN-EC2-SSM-Role |
 
-#### Triển khai EC2 Instance
+![Cấu hình EC2 instance KLTN-Web-Server](/images/4-Workshop/4.4-EC2%20Security%20Group/ec2-instance.png)
 
-Thực hiện theo các bước sau:
+#### Kiểm tra EC2 Instance
 
-1. Truy cập **AWS Management Console**.
-2. Mở dịch vụ **Amazon EC2**.
-3. Chọn **Instances**, sau đó nhấn **Launch instances**.
-4. Nhập tên instance là `KLTN-Web-Server`.
-5. Chọn Amazon Machine Image (AMI) phù hợp với Ubuntu Server.
-6. Chọn loại instance phù hợp với yêu cầu dự án và ngân sách.
-7. Trong phần **Network settings**, chọn VPC `KLTN-VPC`.
-8. Chọn private subnet phù hợp.
-9. Cấu hình Security Group cho các kết nối mạng cần thiết.
-10. Gắn IAM role cho phép quản trị instance thông qua AWS Systems Manager.
-11. Cấu hình dung lượng lưu trữ theo yêu cầu của dự án.
-12. Kiểm tra lại cấu hình và nhấn **Launch instance**.
+Các bước kiểm tra:
 
-Sau khi khởi chạy, kiểm tra trạng thái của instance phải là **Running** và các kiểm tra trạng thái đã hoàn tất thành công.
+1. Mở dịch vụ **Amazon EC2**.
+2. Chọn **Instances**.
+3. Tìm KLTN-Web-Server.
+4. Kiểm tra loại Instance, VPC, Subnet, địa chỉ IP riêng và IP công khai.
+5. Xác nhận Instance đang chạy và các trạng thái kiểm tra đã thành công.
 
-#### Cấu hình IAM Role cho Systems Manager
+Instance được triển khai trong mạng riêng nhằm giảm khả năng bị truy cập trực tiếp từ Internet.
 
-AWS Systems Manager Session Manager cung cấp phương thức truy cập EC2 instance mà không cần mở cổng SSH inbound hoặc quản lý SSH key pair.
+![Thông tin mạng EC2 thể hiện IP riêng và không có Public IPv4](/images/4-Workshop/4.4-EC2%20Security%20Group/ec2-network.png)
 
-Để sử dụng Session Manager, EC2 instance cần được gắn IAM role với các quyền cần thiết cho Systems Manager.
+### 3. Cấu hình IAM Role cho Systems Manager
 
-Quy trình cấu hình bao gồm:
+AWS Systems Manager Session Manager cho phép quản trị viên truy cập EC2 mà không cần mở cổng SSH inbound hoặc quản lý SSH Key Pair.
 
-1. Mở dịch vụ **IAM** trong AWS Management Console.
-2. Tạo hoặc chọn IAM role dành cho EC2.
-3. Gắn quyền cần thiết cho Systems Manager, chẳng hạn policy `AmazonSSMManagedInstanceCore`.
-4. Quay lại giao diện EC2.
-5. Chọn instance `KLTN-Web-Server`.
-6. Gắn IAM role cho instance nếu chưa được cấu hình.
-7. Kiểm tra khả năng kết nối của instance với Systems Manager.
+Dự án sử dụng IAM Role KLTN-EC2-SSM-Role với AWS-managed policy AmazonSSMManagedInstanceCore.
 
-Sau khi hoàn tất cấu hình, chọn EC2 instance và sử dụng **Connect** → **Session Manager** để mở phiên làm việc trên terminal.
+Các bước kiểm tra:
 
-#### Cấu hình Security Group
+1. Mở dịch vụ **IAM**.
+2. Chọn **Roles**.
+3. Tìm KLTN-EC2-SSM-Role.
+4. Kiểm tra Trusted Entity và các quyền được gắn.
+5. Xác nhận Role được gán cho KLTN-Web-Server.
 
-Security Group hoạt động như một tường lửa ảo, kiểm soát lưu lượng truy cập vào và ra khỏi các tài nguyên AWS. Thành phần này giúp giới hạn quyền truy cập chỉ đối với những kết nối mà hệ thống thực sự cần.
+EC2 sử dụng Role này để giao tiếp với Systems Manager.
 
-Trong dự án này, Security Group được cấu hình để kiểm soát giao tiếp giữa Application Load Balancer, EC2 web server và RDS database.
+### 4. Truy cập Instance bằng Session Manager
 
-Các quy tắc truy cập chính được thiết kế như sau:
+Để thiết lập phiên quản trị:
 
-| Tài nguyên | Giao thức | Cổng | Nguồn / Đích | Mục đích |
-|---|---|---|---|---|
-| ALB Security Group | TCP | 80 | Người dùng truy cập, theo cấu hình của ALB | Tiếp nhận yêu cầu truy cập web |
-| EC2 Security Group | TCP | 80 | ALB Security Group | Cho phép ALB chuyển tiếp lưu lượng HTTP đến Nginx |
-| RDS Security Group | TCP | 3306 | EC2 Security Group | Cho phép EC2 kết nối đến MySQL |
+1. Mở **EC2 Console**.
+2. Chọn KLTN-Web-Server.
+3. Nhấn **Connect**.
+4. Chọn **Session Manager**.
+5. Bắt đầu phiên kết nối.
 
-EC2 Security Group không cần quy tắc SSH inbound công khai khi sử dụng Session Manager để quản trị. Các cổng giám sát như `3000`, `9090` và `9100` không được đưa vào cấu hình vì dự án không triển khai Grafana, Prometheus và Node Exporter.
+Phiên làm việc cung cấp quyền truy cập terminal mà không cần địa chỉ IP công khai hoặc quyền SSH inbound.
 
-**Các lưu ý về bảo mật:**
+### 5. Cấu hình Security Group
 
-- Chỉ cho phép lưu lượng HTTP đến EC2 từ ALB Security Group.
-- Chỉ cho phép kết nối MySQL đến RDS từ EC2 Security Group.
-- Tránh mở trực tiếp các cổng quản trị ra Internet.
-- Áp dụng nguyên tắc đặc quyền tối thiểu khi xác định quy tắc inbound và outbound.
-- Security Group có tính chất stateful, vì vậy lưu lượng phản hồi của kết nối được cho phép sẽ tự động được chấp nhận.
+Security Group hoạt động như tường lửa ảo cho các tài nguyên AWS, kiểm soát lưu lượng inbound và outbound theo các quy tắc đã thiết lập.
 
-#### Cài đặt và kiểm tra Nginx
+Dự án sử dụng Security Group để giới hạn quyền truy cập đến máy chủ web và các thành phần mạng hỗ trợ.
 
-Nginx được sử dụng làm máy chủ web chạy trên EC2 instance.
+| Thành phần | Giao thức | Cổng | Mục đích |
+|---|---|---|---|
+| ALB Security Group | TCP | 80 | Tiếp nhận yêu cầu HTTP |
+| EC2 Security Group | TCP | 80 | Cho phép HTTP từ ALB chuyển tiếp đến EC2 |
+| VPC Endpoint Security Group | TCP | 443 | Cho phép EC2 giao tiếp HTTPS với Endpoint |
 
-Sau khi kết nối đến instance thông qua Session Manager, quản trị viên có thể cài đặt Nginx trên Ubuntu bằng các lệnh sau:
+EC2 Security Group được cấu hình để nhận lưu lượng web từ ALB Security Group thay vì cho phép truy cập trực tiếp từ các nguồn Internet không giới hạn.
+
+Không cần mở inbound SSH để quản trị vì dự án sử dụng Session Manager.
+
+![Các quy tắc Security Group của EC2](/images/4-Workshop/4.4-EC2%20Security%20Group/security-group.png)
+
+### 6. Cài đặt và kiểm tra Nginx
+
+Nginx là máy chủ web được cài đặt trên EC2 Instance.
+
+Sau khi kết nối bằng Session Manager, có thể sử dụng các lệnh sau trên Ubuntu:
 
 ```bash
 sudo apt update
 sudo apt install nginx -y
 ```
 
-Khởi động Nginx và cấu hình dịch vụ tự động chạy khi hệ thống khởi động:
+Khởi động và thiết lập dịch vụ tự chạy:
 
 ```bash
 sudo systemctl start nginx
 sudo systemctl enable nginx
 ```
 
-Kiểm tra trạng thái dịch vụ:
+Kiểm tra trạng thái:
 
 ```bash
 sudo systemctl status nginx
 ```
 
-Nếu Nginx hoạt động bình thường, máy chủ web có thể phản hồi các yêu cầu HTTP được Application Load Balancer chuyển tiếp đến.
+Kiểm tra phản hồi của máy chủ web tại local:
 
-#### Kiểm tra cấu hình EC2 và Security Group
+```bash
+curl -I http://localhost
+```
 
-Sau khi hoàn tất cấu hình, kiểm tra các nội dung sau:
+Phản hồi HTTP thành công xác nhận Nginx đang hoạt động trên EC2.
 
-- EC2 instance `KLTN-Web-Server` có trạng thái **Running**.
-- Các kiểm tra trạng thái của instance đã hoàn tất thành công.
-- Instance được gắn IAM role cần thiết cho Systems Manager.
-- Session Manager có thể tạo phiên kết nối đến instance.
-- Dịch vụ Nginx đang hoạt động.
-- EC2 Security Group cho phép lưu lượng HTTP từ ALB Security Group.
-- RDS Security Group cho phép lưu lượng MySQL trên cổng `3306` từ EC2 Security Group.
+### 7. Kết quả kiểm tra
 
-Có thể kiểm tra riêng kết nối mạng giữa EC2 và RDS để xác nhận cổng cơ sở dữ liệu cần thiết có thể truy cập được.
+Các cấu hình sau đã được xác minh trong quá trình triển khai:
+
+- KLTN-Web-Server đang hoạt động.
+
+- Instance sử dụng IP riêng 10.0.2.35.
+
+- Không được gán địa chỉ IPv4 công khai.
+
+- Instance có IAM Role KLTN-EC2-SSM-Role.
+
+- Session Manager thiết lập được phiên terminal.
+
+- Nginx đang chạy và phản hồi yêu cầu HTTP nội bộ.
 
 #### Kết quả mong đợi
 
-Sau khi hoàn thành phần này, dự án có một EC2 instance chạy Nginx làm máy chủ web. Việc quản trị instance được thực hiện thông qua AWS Systems Manager Session Manager, trong khi Security Group giới hạn giao tiếp giữa ALB, EC2 và RDS.
+Dự án có máy chủ EC2 riêng tư chạy Nginx. Session Manager cung cấp phương thức quản trị, trong khi Security Group giới hạn giao tiếp mạng theo các luồng cần thiết.
 
-Các cấu hình này tạo nền tảng cho việc triển khai và bảo vệ dịch vụ web bên trong hạ tầng AWS.
+Cấu hình này giúp giảm mức độ phơi nhiễm trực tiếp của máy chủ và tạo nền tảng cho việc bảo vệ lưu lượng web thông qua Application Load Balancer và AWS WAF.
+
+==================================================

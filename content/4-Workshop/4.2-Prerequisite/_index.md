@@ -6,46 +6,49 @@ chapter: false
 pre: " <b> 4.2. </b> "
 ---
 
-#### Overview of the Deployment Environment
+### 1. Overview of the Deployment Environment
 
-To implement an AWS infrastructure security system, we need to prepare an AWS account, a computer for administration, an Internet connection, and a basic network design.
+Before implementing the AWS infrastructure security environment, several basic requirements must be prepared, including an AWS account, an administration computer, network planning, and access permissions.
 
-The project uses Amazon Web Services (AWS) to build and manage the cloud infrastructure. The deployment environment is based on the Singapore Region (`ap-southeast-1`), where the network, computing, database, and security resources are configured.
+The project is deployed in the Asia Pacific (Singapore) Region (ap-southeast-1). The environment uses Amazon VPC, EC2, an Application Load Balancer, AWS WAF, IAM, AWS Systems Manager, and monitoring and logging services.
 
-The infrastructure includes an Amazon VPC with public and private subnets, an Internet Gateway, a NAT Gateway, route tables, an EC2 web server, an RDS MySQL database, and an Application Load Balancer. Additional AWS services are used to manage access, protect web traffic, and review infrastructure activities.
+![AWS Management Console in the Singapore Region](/images/4-Workshop/4.2-Prerequisites/aws-region.png)
 
-#### Required Components
+### 2. Required Components
 
-- **Amazon Web Services (AWS) Account:** Required to access the AWS Management Console and create or manage cloud resources.
+- **AWS Account:** An AWS account is required to access the AWS Management Console and deploy cloud resources.
 
-- **AWS Management Console:** Used to configure and manage services such as Amazon VPC, EC2, RDS, IAM, Elastic Load Balancing, and AWS WAF.
+- **AWS Management Console:** Used to configure and manage AWS services.
 
-- **IAM User and Permissions:** Used to access AWS services and perform the operations required for the project. Appropriate permissions must be available for the resources being configured.
+- **Authorized IAM Identity:** An IAM user or role with sufficient permissions is required to create and manage the resources used in the project.
 
-- **Amazon VPC:** Used to create the cloud network environment, including public and private subnets, an Internet Gateway, a NAT Gateway, and route tables.
+- **Amazon VPC:** Provides an isolated network environment for the cloud infrastructure.
 
-- **Amazon EC2:** Used to deploy the web server and provide a computing environment for testing network access.
+- **Amazon EC2:** Hosts the Nginx web server inside a private subnet.
 
-- **Amazon RDS:** Used to deploy and manage a MySQL database within the AWS environment.
+- **VPC Endpoints:** Provide private connectivity between the VPC and supported AWS services, including Systems Manager.
 
-- **Application Load Balancer (ALB) and AWS WAF:** Used to provide access to the web server and apply web traffic protection rules.
+- **Application Load Balancer and AWS WAF:** Provide web traffic distribution and protection.
 
-- **Administration Computer:** Used to access the AWS Management Console, configure resources, connect to the EC2 instance, and perform testing through a web browser or terminal.
+- **Monitoring and Logging Services:** CloudWatch, CloudTrail, AWS Config, EventBridge, and SNS support monitoring, auditing, configuration review, and notifications.
 
-#### Prerequisites Before Deployment
+- **Administration Computer:** A computer with a modern web browser and terminal is required to access the AWS Console and perform verification tasks.
 
-Before starting the workshop, ensure that the following requirements are met:
+### 3. Prerequisites Before Deployment
 
-1. An AWS account has been created and can access the AWS Management Console.
-2. An IAM user or another authorized identity has the permissions required to configure the necessary AWS services.
-3. A computer with a modern web browser and a stable Internet connection is available.
-4. The AWS Region is selected as Asia Pacific (Singapore) (`ap-southeast-1`).
-5. An IP addressing plan has been prepared for the VPC and its public and private subnets. The selected CIDR ranges must not overlap.
-6. Basic knowledge of cloud computing, IP addressing, subnetting, and network access control is recommended.
-7. AWS pricing and resource usage should be reviewed before deployment to avoid unnecessary costs.
+Before starting the workshop, ensure that:
 
-#### Expected Outcome
+1. An AWS account is available and can access the AWS Management Console.
+2. The account has sufficient permissions to configure the required AWS services.
+3. A stable Internet connection and a modern web browser are available.
+4. The selected AWS Region is Asia Pacific (Singapore) (ap-southeast-1).
+5. The VPC CIDR range and subnet address ranges have been planned without overlapping.
+6. Basic knowledge of IP addressing, subnetting, routing, and network security is recommended.
+7. AWS pricing and resource usage have been reviewed to avoid unnecessary costs.
 
-After completing the preparation stage, we will have an accessible AWS account, an appropriate working region, the necessary permissions, and an initial IP addressing plan.
+### 4. Expected Outcome
 
-These preparations provide the foundation for building the VPC network, deploying EC2 and RDS resources, configuring access control, protecting web traffic, and reviewing infrastructure security in the following sections.
+After completing this preparation stage, the AWS account, working region, access permissions, and network plan are ready for the infrastructure deployment.
+
+These requirements provide the foundation for creating the VPC environment, deploying the private EC2 web server, configuring secure access, protecting web traffic, and monitoring infrastructure activities.
+

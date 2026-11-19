@@ -1,5 +1,5 @@
 ---
-title: "AWS WAF Configuration and Web Traffic Filtering"
+title: "Load Balancing and Web Application Protection"
 date: 2026-10-30
 weight: 6
 chapter: false
@@ -8,81 +8,128 @@ pre: " <b> 4.6. </b> "
 
 #### Overview
 
-This section describes the configuration of AWS Web Application Firewall (AWS WAF) to help protect the web application infrastructure deployed on AWS.
+Application Load Balancer (ALB) and AWS Web Application Firewall (WAF) provide important layers of protection for web applications deployed on AWS.
 
-AWS WAF is associated with the Application Load Balancer (ALB) to inspect incoming HTTP requests and apply configured web access rules.
+In this project, the Application Load Balancer provides an entry point for HTTP traffic to the Nginx web server running on the private EC2 instance. AWS WAF is associated with the ALB to inspect incoming requests and filter potentially malicious web traffic.
 
-In this project, the Web ACL named `KLTN-WebACL` is associated with `KLTN-ALB`. The purpose is to control incoming web traffic and demonstrate how AWS WAF can allow or block requests based on configured rules.
+### 1. Application Load Balancer
 
-#### 1. Prepare the WAF Environment
+The project uses an Application Load Balancer named KLTN-ALB.
 
-Before configuring AWS WAF, verify that the following resources are available:
+The ALB receives incoming HTTP requests and forwards eligible traffic to the configured target group.
 
-- An existing Application Load Balancer named `KLTN-ALB`.
-- An AWS WAF Web ACL named `KLTN-WebACL`.
-- A web server running behind the Application Load Balancer.
-- Access to the AWS Management Console.
+To review the ALB configuration:
 
-The Application Load Balancer provides the entry point for incoming web traffic, while AWS WAF inspects requests before they reach the web server.
+1. Open the **EC2** service.
+2. Select **Load Balancers**.
+3. Find KLTN-ALB.
+4. Review its scheme, listeners, Availability Zones, and associated Security Group.
+5. Open the associated target group.
+6. Review the registered EC2 target and its health status.
 
-#### 2. Create and Configure a Web ACL
+The ALB provides a controlled access point to the web server instead of requiring users to connect directly to the private EC2 instance.
 
-To configure AWS WAF:
+![KLTN-ALB configuration and status](/images/4-Workshop/4.6-Load%20Balancing%20and%20Web%20Application%20Protection/alb-details.png)
 
-1. Open the AWS Management Console.
-2. Navigate to **AWS WAF & Shield**.
-3. Select **Web ACLs**.
-4. Open the Web ACL named `KLTN-WebACL`.
-5. Review its configured rules and default action.
-6. Check the associated AWS resource.
+![Target group and registered EC2 target health](/images/4-Workshop/4.6-Load%20Balancing%20and%20Web%20Application%20Protection/target-group.png)
 
-A Web ACL contains rules that determine whether incoming requests should be allowed or blocked.
+### 2. AWS WAF Configuration
 
-#### 3. Associate AWS WAF with the Application Load Balancer
+AWS WAF is used to inspect HTTP requests and apply web traffic filtering rules.
 
-AWS WAF is associated with the Application Load Balancer to inspect incoming HTTP requests.
+The project uses a Web ACL named KLTN-WebACL, which is associated with KLTN-ALB.
 
-Verify the association as follows:
+To review the Web ACL:
 
-1. Open the AWS WAF console.
-2. Select `KLTN-WebACL`.
-3. Review the associated AWS resources.
-4. Confirm that `KLTN-ALB` is listed.
+1. Open the **AWS WAF & Shield** service.
+2. Select **Web ACLs**.
+3. Find KLTN-WebACL.
+4. Review its associated AWS resource.
+5. Inspect the configured rules and rule groups.
+6. Review the available traffic metrics.
 
-This configuration allows AWS WAF to inspect web requests before they are forwarded to the EC2 web server.
+AWS Managed Rules can help detect and block common web attack patterns, including SQL injection and cross-site scripting attempts.
 
-#### 4. Review Web Traffic Filtering
+![KLTN-WebACL associated with the Application Load Balancer](/images/4-Workshop/4.6-Load%20Balancing%20and%20Web%20Application%20Protection/waf-web-acl.png)
 
-After associating the Web ACL with the Application Load Balancer, review the request statistics in the AWS WAF console.
+![AWS WAF managed rule configuration](/images/4-Workshop/4.6-Load%20Balancing%20and%20Web%20Application%20Protection/waf-rules.png)
 
-The dashboard provides information about requests that were allowed or blocked by the configured rules.
+### 3. Web Traffic Verification
 
-During the implementation, the Web ACL dashboard displayed the following results:
+The project performs basic HTTP request tests to observe how the web application responds before and after WAF protection is applied.
 
-| Request action | Number of requests |
-|---|---:|
-| Allowed | 5 |
-| Blocked | 25 |
-| Total | 30 |
+The tests include:
 
-These results demonstrate that AWS WAF processed incoming requests and applied its traffic filtering rules.
+- Normal HTTP requests to verify that the web service remains accessible.
 
-#### 5. Verify the WAF Configuration
+- SQL injection patterns in request parameters.
 
-To verify the configuration:
+- Cross-site scripting (XSS) patterns in request parameters.
 
-1. Open the AWS WAF console.
-2. Select `KLTN-WebACL`.
-3. Check the associated resource and confirm that `KLTN-ALB` is attached.
-4. Review the request statistics.
-5. Compare the allowed and blocked request counts.
+- Path traversal-style requests.
 
-The ALB can also be accessed through its DNS name to verify that the web server is reachable.
+Example test commands:
 
-**Note:** The request statistics demonstrate that AWS WAF processed and filtered traffic. They should not be interpreted as proof that every individual attack type has been tested unless corresponding test results are available.
+```bash
+curl -i "http://<ALB-DNS>/"
+```
 
-#### Conclusion
+SQL injection pattern:
 
-In this section, AWS WAF was configured and associated with the Application Load Balancer to inspect incoming web traffic.
+```bash
+curl -i "http://<ALB-DNS>/?id=1%20OR%201=1"
+```
 
-The recorded statistics showed 30 processed requests, including 5 allowed requests and 25 blocked requests. This demonstrates how AWS WAF can provide an additional layer of protection for web infrastructure deployed on AWS.
+XSS pattern:
+
+```bash
+curl -i "http://<ALB-DNS>/?input=<script>alert(1)</script>"
+```
+
+Replace <ALB-DNS> with the actual DNS name of the Application Load Balancer.
+
+![Normal HTTP request returning HTTP 200](/images/4-Workshop/4.6-Load%20Balancing%20and%20Web%20Application%20Protection/waf-normal-request.png)
+
+### 4. Test Results
+
+During the implementation, the normal web request was successfully served by the web server.
+
+The security tests produced the following observed results:
+
+| Test | Observed Result |
+|---|---|
+| Normal HTTP request | HTTP 200 |
+| SQL injection test before WAF protection | HTTP 200 |
+| SQL injection test after WAF protection | HTTP 403 |
+| XSS test before WAF protection | HTTP 200 |
+| XSS test after WAF protection | HTTP 403 |
+| Path traversal-style request | HTTP 400 |
+
+The HTTP 403 responses observed during the SQL injection and XSS tests indicate that the requests were blocked by the configured web protection layer.
+
+The HTTP 400 response for the path traversal-style request indicates that the request was rejected. This result should not be interpreted as proof that AWS WAF specifically blocked it unless the corresponding WAF log or metric confirms the rule action.
+
+![SQL injection and XSS test requests returning HTTP 403](/images/4-Workshop/4.6-Load%20Balancing%20and%20Web%20Application%20Protection/waf-sqli-xss.png)
+
+![AWS WAF sampled request showing a blocked SQL injection request](/images/4-Workshop/4.6-Load%20Balancing%20and%20Web%20Application%20Protection/waf-sampled-block.png)
+
+### 5. Security Benefits
+
+The ALB and WAF configuration provides the following benefits:
+
+- Centralized entry point for incoming web traffic.
+
+- Separation between the public-facing load balancer and private EC2 server.
+
+- Inspection of incoming HTTP requests.
+
+- Filtering of requests matching configured web attack rules.
+
+- Reduced direct exposure of the application server.
+
+### 6. Conclusion
+
+This section demonstrates how Application Load Balancer and AWS WAF work together to provide web access and traffic protection.
+
+The practical tests show that SQL injection and XSS test requests received HTTP 403 responses after WAF protection was applied, while normal web access continued to return HTTP 200.
+

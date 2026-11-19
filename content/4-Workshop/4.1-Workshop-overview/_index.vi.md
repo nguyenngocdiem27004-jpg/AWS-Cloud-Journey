@@ -6,30 +6,62 @@ chapter: false
 pre: " <b> 4.1. </b> "
 ---
 
-#### Giới thiệu về bảo mật hạ tầng AWS
+### 1. Giới thiệu về bảo mật hạ tầng AWS
 
-- **Hạ tầng đám mây AWS** cung cấp môi trường để triển khai và quản lý các tài nguyên tính toán, mạng và cơ sở dữ liệu. AWS cung cấp nhiều dịch vụ hỗ trợ tổ chức xây dựng và quản lý môi trường đám mây.
+Bảo mật hạ tầng AWS bao gồm việc bảo vệ tài nguyên đám mây, kiểm soát quyền truy cập mạng, quản lý quyền hạn và giám sát các hoạt động trong môi trường AWS.
 
-- **Bảo mật mạng** là một phần quan trọng trong việc bảo vệ hạ tầng đám mây. Amazon VPC, Subnet, Route Table, Security Group và Network Access Control List (NACL) giúp tổ chức tài nguyên mạng và kiểm soát quyền truy cập.
+Các khía cạnh bảo mật chính được đề cập trong dự án bao gồm:
 
-- **Quản lý danh tính và quyền truy cập** giúp quản lý quyền đối với các tài nguyên AWS. AWS Identity and Access Management (IAM) hỗ trợ kiểm soát truy cập và triển khai nguyên tắc đặc quyền tối thiểu.
+- **Bảo mật mạng:** Amazon Virtual Private Cloud (VPC), Subnet, Route Table, Internet Gateway, Security Group và VPC Endpoint giúp tổ chức tài nguyên mạng và kiểm soát hoạt động giao tiếp giữa các thành phần.
 
-- **Giám sát và quản lý cấu hình** giúp quản trị viên theo dõi thông tin tài nguyên, xem xét hoạt động tài khoản và đánh giá cấu hình hạ tầng. AWS cung cấp các dịch vụ như Amazon CloudWatch, AWS CloudTrail và AWS Config để hỗ trợ những công việc này.
+- **Quản lý danh tính và quyền truy cập:** AWS Identity and Access Management (IAM) cung cấp các cơ chế quản lý quyền. IAM Role và Policy được sử dụng để cấp những quyền cần thiết theo nguyên tắc đặc quyền tối thiểu.
 
-#### Tổng quan Workshop
+- **Quản trị EC2 an toàn:** AWS Systems Manager (SSM) Session Manager cho phép truy cập và quản lý EC2 instance mà không cần địa chỉ IP công khai hoặc kết nối SSH trực tiếp.
 
-Workshop này giới thiệu môi trường hạ tầng AWS và các cấu hình bảo mật được triển khai trong dự án **"Nghiên cứu và triển khai hệ thống bảo mật hạ tầng trên AWS."**
+- **Bảo vệ ứng dụng web:** Application Load Balancer (ALB) phân phối lưu lượng truy cập đến máy chủ ứng dụng, trong khi AWS Web Application Firewall (WAF) kiểm tra và lọc các yêu cầu web dựa trên những quy tắc đã cấu hình.
 
-Môi trường bao gồm các thành phần chính sau:
+- **Giám sát và kiểm toán:** Amazon CloudWatch, AWS CloudTrail và AWS Config hỗ trợ giám sát hoạt động của tài nguyên, ghi nhận sự kiện trong tài khoản và theo dõi cấu hình tài nguyên.
 
-- **"Hạ tầng mạng AWS"** sử dụng Amazon VPC để tổ chức mạng đám mây với Public Subnet, Private Subnet, Internet Gateway, NAT Gateway và Route Table.
+### 2. Tổng quan Workshop
 
-- **"Môi trường máy chủ và cơ sở dữ liệu"** sử dụng Amazon EC2 để triển khai máy chủ web và Amazon RDS để cung cấp cơ sở dữ liệu MySQL được quản lý. Truy cập mạng giữa các tài nguyên được kiểm soát thông qua các cấu hình bảo mật.
+Workshop này giới thiệu hạ tầng AWS và các cấu hình bảo mật được triển khai trong dự án **"Nghiên cứu và triển khai hệ thống bảo mật hạ tầng trên AWS."**
 
-- **"Kiểm soát truy cập và bảo mật mạng"** sử dụng IAM Role và Policy để quản lý quyền, trong khi Security Group kiểm soát lưu lượng mạng giữa Application Load Balancer, EC2 và cơ sở dữ liệu RDS.
+Môi trường được triển khai tại khu vực Asia Pacific (Singapore) (ap-southeast-1) và bao gồm các thành phần chính sau:
 
-- **"Truy cập và bảo vệ ứng dụng"** sử dụng Application Load Balancer (ALB) để cung cấp khả năng truy cập đến máy chủ web. AWS WAF được liên kết với ALB nhằm kiểm tra và lọc các yêu cầu truy cập web.
+![Sơ đồ kiến trúc hạ tầng AWS](/images/4-Workshop/4.1-Introduction/diagram.png)
 
-- **"Giám sát và đánh giá cấu hình"** giới thiệu Amazon CloudWatch, AWS CloudTrail và AWS Config để theo dõi thông tin tài nguyên, xem xét hoạt động tài khoản và kiểm tra cấu hình tài nguyên.
+- **Hạ tầng mạng AWS:** Amazon VPC cung cấp môi trường mạng được cô lập với các phân đoạn mạng công khai và riêng tư, bảng định tuyến và Internet Gateway. VPC Endpoint cung cấp kết nối riêng tư đến các dịch vụ AWS được hỗ trợ mà không cần sử dụng NAT Gateway.
 
-Thông qua workshop này, bạn sẽ tìm hiểu kiến trúc môi trường AWS, cách các dịch vụ phối hợp với nhau, đồng thời xem xét những cấu hình bảo mật và các bài kiểm tra thực tế đã thực hiện trong dự án.
+- **Môi trường máy chủ:** Một EC2 instance có tên KLTN-Web-Server được triển khai trong Private Subnet. Instance chạy Nginx làm máy chủ web và không được gán địa chỉ IPv4 công khai.
+
+- **Kiểm soát truy cập và quản trị an toàn:** IAM Role cung cấp các quyền cần thiết để EC2 giao tiếp với AWS Systems Manager. Session Manager được sử dụng để truy cập instance mà không cần mở quyền truy cập SSH từ bên ngoài.
+
+- **Truy cập và bảo vệ ứng dụng:** Application Load Balancer (ALB) cung cấp điểm truy cập web đến máy chủ EC2. AWS WAF được liên kết với ALB để kiểm tra các yêu cầu truy cập và hỗ trợ ngăn chặn lưu lượng web có dấu hiệu độc hại.
+
+- **Giám sát, ghi nhật ký và cảnh báo:** Amazon CloudWatch được sử dụng để xem xét các chỉ số và thông tin giám sát tài nguyên. AWS CloudTrail ghi nhận hoạt động trong tài khoản, trong khi AWS Config theo dõi cấu hình tài nguyên và đánh giá chúng dựa trên các quy tắc đã thiết lập. Amazon EventBridge và Amazon SNS hỗ trợ gửi thông báo đối với một số sự kiện liên quan đến bảo mật.
+
+Thông qua workshop này, bạn sẽ tìm hiểu kiến trúc AWS đã triển khai, cách các dịch vụ phối hợp với nhau, đồng thời xem xét các cấu hình bảo mật và hoạt động kiểm tra thực tế được thực hiện trong dự án.
+
+### 3. Mục tiêu Workshop
+
+Sau khi hoàn thành workshop, bạn có thể:
+
+- Hiểu các thành phần chính của hạ tầng mạng AWS.
+
+- Tổ chức tài nguyên đám mây bằng Amazon VPC, Subnet và Route Table.
+
+- Triển khai máy chủ web EC2 trong Private Subnet.
+
+- Áp dụng IAM Role và Security Group để kiểm soát quyền truy cập.
+
+- Sử dụng Systems Manager Session Manager để quản trị EC2 an toàn.
+
+- Cấu hình Application Load Balancer và AWS WAF để bảo vệ lưu lượng truy cập web.
+
+- Theo dõi hoạt động và cấu hình hạ tầng bằng CloudWatch, CloudTrail và AWS Config.
+
+- Hiểu cách EventBridge và SNS hỗ trợ gửi cảnh báo về các sự kiện bảo mật.
+
+- Thực hiện kiểm tra bảo mật cơ bản và đánh giá mức sử dụng tài nguyên hạ tầng.
+
+==================================================

@@ -6,135 +6,138 @@ chapter: false
 pre: " <b> 4.3. </b> "
 ---
 
-#### Overview of AWS Network Infrastructure
+### 1. Overview of AWS Network Infrastructure
 
-Amazon Virtual Private Cloud (Amazon VPC) provides a logically isolated network environment in AWS. It allows administrators to configure IP address ranges, subnets, route tables, and network connectivity for cloud resources.
+Amazon Virtual Private Cloud (Amazon VPC) provides a logically isolated network environment in AWS. It allows administrators to define IP address ranges, create subnets, configure route tables, and control network connectivity.
 
-In this project, the AWS network infrastructure is deployed in the Asia Pacific (Singapore) Region (`ap-southeast-1`). The VPC is divided into public and private subnets to separate resources according to their roles and access requirements.
+In this project, the network infrastructure is deployed in the Asia Pacific (Singapore) Region (ap-southeast-1). The VPC provides the network boundary for the project. The EC2 web server is placed in a private subnet, while the route tables and Internet Gateway define the available network paths.
 
-The main network components include Amazon VPC, public and private subnets, an Internet Gateway, a NAT Gateway, and route tables. These components provide network connectivity while helping control access to resources inside the VPC.
+The environment uses VPC Endpoints to provide private connectivity to supported AWS services. This approach allows the private EC2 instance to communicate with Systems Manager without requiring a NAT Gateway or a public IP address.
 
 #### Deployment Objectives
 
-- Create and configure an Amazon VPC with an appropriate IP address range.
-- Divide the VPC into public and private subnets across Availability Zones.
-- Attach an Internet Gateway to provide Internet connectivity for public subnets.
-- Configure a NAT Gateway to allow resources in private subnets to access the Internet when required.
-- Configure route tables and subnet associations to control network traffic.
-- Prepare the network environment for deploying Amazon EC2 and Amazon RDS resources.
+- Use an Amazon VPC to isolate the project network.
+
+- Organize the project resources within the VPC and its private subnets.
+
+- Configure route tables and subnet associations.
+
+- Attach an Internet Gateway to the VPC.
+
+- Configure VPC Endpoints for private access to supported AWS services.
+
+- Prepare the network for the private EC2 web server and Application Load Balancer.
 
 #### IP Addressing Design
 
-The project uses the private IP address range `10.0.0.0/16` for the VPC. This range provides sufficient address space for multiple public and private subnets.
+The project uses the IPv4 CIDR block 10.0.0.0/16 for the VPC.
 
 | Component | Resource Name | IP Range / Configuration |
 |---|---|---|
-| Amazon VPC | KLTN-VPC | `10.0.0.0/16` |
-| Public Subnets | Configured in KLTN-VPC | Refer to the actual subnet CIDR ranges in AWS Console |
-| Private Subnet 2 | KLTN-Private-Subnet-2 | `10.0.4.0/24` |
-| Internet Gateway | Attached to KLTN-VPC | Provides Internet connectivity for public subnets |
-| NAT Gateway | Configured in a public subnet | Allows outbound Internet access from private subnets |
-| Private Route Table | KLTN-Private-RT | Routes traffic for associated private subnets |
+| VPC | KLTN-VPC | 10.0.0.0/16 |
+| Private Subnet 1 | KLTN-Private-Subnet | 10.0.2.0/24 |
+| Private Subnet 2 | KLTN-Private-Subnet-2 | 10.0.4.0/24 |
+| Private Route Table | KLTN-Private-RT | Associated with the private subnets |
+| Public Route Table | KLTN-Public-RT | Used for public network routing |
+| Internet Gateway | Attached to KLTN-VPC | Provides Internet connectivity for appropriately routed public resources |
+| VPC Endpoints | SSM and SSMMessages endpoints | Private connectivity to Systems Manager |
 
-The CIDR ranges and Availability Zones of the remaining subnets should be checked in the Amazon VPC console to ensure that the documentation matches the deployed environment.
+### 2. Reviewing the Amazon VPC Configuration
 
-#### Deploying Amazon VPC
+The project uses an existing VPC named KLTN-VPC.
 
-Amazon VPC is a logically isolated virtual network that allows administrators to control IP address ranges, subnets, routing, and network connectivity.
+To review its configuration:
 
-The project uses an existing VPC named `KLTN-VPC`.
-
-To review the VPC configuration:
-
-1. Access the AWS Management Console.
-2. Open the **Amazon VPC** service.
+1. Open the AWS Management Console.
+2. Navigate to **VPC**.
 3. Select **Your VPCs**.
-4. Find and select `KLTN-VPC`.
-5. Review its IPv4 CIDR block and other network settings.
-6. Verify that the VPC is available and that its configuration matches the project design.
+4. Find and select KLTN-VPC.
+5. Review the IPv4 CIDR block.
+6. Confirm that the VPC is in the available state.
 
-The VPC uses the IPv4 CIDR block `10.0.0.0/16`.
+The configured IPv4 CIDR block is 10.0.0.0/16.
 
-#### Creating and Configuring Subnets
+![KLTN-VPC configuration and IPv4 CIDR](/images/4-Workshop/4.3-AWS%20Network%20Infrastructure/vpc-details.png)
 
-Subnets divide a VPC into smaller network segments. Public subnets are used for resources that require a route to the Internet Gateway, while private subnets are used for resources that should not be directly accessible from the Internet.
+### 3. Reviewing Subnets
 
-The project uses two public subnets and two private subnets.
+Subnets divide a VPC into smaller network segments. They help separate resources according to their roles and access requirements.
 
 To review the subnet configuration:
 
-1. In the Amazon VPC console, select **Subnets**.
-2. Filter the subnet list by the VPC `KLTN-VPC`.
-3. Review the names, IPv4 CIDR blocks, and Availability Zones of the four subnets.
-4. Verify that the public and private subnets use separate network ranges.
-5. Check the route table association of each subnet.
-6. For public subnets that need to assign public IPv4 addresses automatically, verify the **Enable auto-assign public IPv4 address** setting.
+1. In the VPC console, select **Subnets**.
+2. Filter the list by KLTN-VPC.
+3. Review each subnet's name, IPv4 CIDR block, and Availability Zone.
+4. Check the route table association of each subnet.
+5. Confirm that the private subnets use the intended private route table.
 
-A private subnet used by the project is named `KLTN-Private-Subnet-2`, with the CIDR block `10.0.4.0/24`.
+The two private subnets used in the project are:
 
-#### Creating and Attaching an Internet Gateway
+- KLTN-Private-Subnet: 10.0.2.0/24
 
-An Internet Gateway allows resources in a VPC to communicate with the Internet when the appropriate routing and security configurations are in place.
+- KLTN-Private-Subnet-2: 10.0.4.0/24
 
-To review the Internet Gateway configuration:
+![The two private subnets in KLTN-VPC](/images/4-Workshop/4.3-AWS%20Network%20Infrastructure/subnets.png)
 
-1. In the Amazon VPC console, select **Internet gateways**.
-2. Find the Internet Gateway attached to `KLTN-VPC`.
-3. Select the Internet Gateway and review its details.
-4. Verify that its state indicates that it is attached to the correct VPC.
+### 4. Internet Gateway and Route Tables
 
-The Internet Gateway is used by the public route table to provide a route to the Internet.
+An Internet Gateway is attached to the VPC to support Internet connectivity for resources whose subnet routing and security rules permit it.
 
-#### Configuring the NAT Gateway
+The project contains a public route table named KLTN-Public-RT and a private route table named KLTN-Private-RT.
 
-A NAT Gateway allows resources in private subnets to initiate connections to the Internet without allowing unsolicited inbound connections from the Internet.
+To review route table settings:
 
-To review the NAT Gateway configuration:
+1. Open **Route tables** in the VPC console.
+2. Select KLTN-Public-RT and review its routes and subnet associations.
+3. Select KLTN-Private-RT.
+4. Open the **Routes** tab to review the configured destinations.
+5. Open **Subnet associations** to confirm the associated private subnets.
 
-1. In the Amazon VPC console, select **NAT gateways**.
-2. Find the NAT Gateway configured for the project.
-3. Verify that its state is **Available**.
-4. Check that it is deployed in a public subnet.
-5. Review the private route table to confirm that the default route points to the NAT Gateway.
+The private route table is used to keep private subnet routing separate from public subnet routing. A NAT Gateway is not part of the current deployed environment.
 
-The NAT Gateway provides outbound Internet connectivity for resources in private subnets when required.
+![Route table subnet associations](/images/4-Workshop/4.3-AWS%20Network%20Infrastructure/route-tables.png)
 
-#### Configuring Route Tables
+### 5. Configuring VPC Endpoints
 
-A route table determines where network traffic is directed. Public and private subnets use route tables with different routing configurations.
+VPC Endpoints allow resources inside a VPC to connect to supported AWS services without requiring traffic to travel through a public Internet route.
 
-For the public route table:
+The project uses Systems Manager-related VPC Endpoints to support private administration of the EC2 instance.
 
-1. In the Amazon VPC console, select **Route tables**.
-2. Select the route table associated with the public subnets.
-3. Open the **Routes** tab.
-4. Verify that the route `0.0.0.0/0` points to the Internet Gateway.
-5. Open **Subnet associations** and verify the associated public subnets.
+The configured endpoints include:
 
-For the private route table:
+- KLTN-SSM-Endpoint
 
-1. Select `KLTN-Private-RT`.
-2. Open the **Routes** tab.
-3. Verify that the route `0.0.0.0/0` points to the NAT Gateway, if private subnet Internet access is required.
-4. Open **Subnet associations**.
-5. Verify that the intended private subnets are associated with this route table.
+- KLTN-SSMMessages-Endpoint
 
-The route table configuration separates public and private network traffic and supports the intended access requirements of the project.
+To review the endpoint configuration:
 
-#### Verifying the Deployment
+1. Open the VPC console.
+2. Select **Endpoints**.
+3. Find the Systems Manager endpoints.
+4. Review their service names, VPC association, subnet configuration, and endpoint security group.
+5. Confirm that the endpoint state is **Available**.
 
-After reviewing the network configuration, verify the following:
+The endpoint security group allows HTTPS traffic on TCP port 443 from the EC2 Security Group.
 
-- The VPC `KLTN-VPC` uses the CIDR block `10.0.0.0/16`.
-- The VPC contains two public subnets and two private subnets.
+### 6. Verifying the Network Configuration
+
+After reviewing the network environment, verify that:
+
+- KLTN-VPC uses 10.0.0.0/16.
+
+- Both private subnets exist with their intended CIDR ranges.
+
+- The public and private route tables are available.
+
 - The Internet Gateway is attached to the correct VPC.
-- The public route table contains a default route pointing to the Internet Gateway.
-- The NAT Gateway is available in a public subnet.
-- The private route table uses the NAT Gateway as its default route when outbound Internet access is required.
-- The subnet associations match the intended network design.
+
+- The SSM and SSMMessages VPC Endpoints are available.
+
+- The private EC2 instance can use the configured endpoints for Systems Manager connectivity.
 
 #### Expected Results
 
-After completing this section, the AWS network infrastructure provides a foundation for deploying and connecting cloud resources. Public and private subnets help separate resources according to their access requirements, while Internet Gateway, NAT Gateway, and route tables control network connectivity.
+The VPC provides an isolated network environment for the project. The two private subnets, route tables, Internet Gateway, and VPC Endpoints organize connectivity and reduce direct exposure of the EC2 instance.
 
-The next section focuses on Amazon EC2 and Security Groups, which are used to deploy the web server and control network access to the instance.
+The next section focuses on deploying the EC2 web server and configuring Security Groups to control network access.
+

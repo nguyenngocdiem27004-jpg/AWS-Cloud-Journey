@@ -1,5 +1,5 @@
 ---
-title: "Cấu hình AWS WAF và lọc lưu lượng truy cập web"
+title: "Cân bằng tải và bảo vệ ứng dụng web"
 date: 2026-10-30
 weight: 6
 chapter: false
@@ -8,81 +8,129 @@ pre: " <b> 4.6. </b> "
 
 #### Tổng quan
 
-Phần này trình bày quá trình cấu hình AWS Web Application Firewall (AWS WAF) nhằm tăng cường bảo vệ hạ tầng ứng dụng web được triển khai trên AWS.
+Application Load Balancer (ALB) và AWS Web Application Firewall (WAF) cung cấp các lớp bảo vệ quan trọng cho ứng dụng web được triển khai trên AWS.
 
-AWS WAF được liên kết với Application Load Balancer (ALB) để kiểm tra các yêu cầu HTTP gửi đến và áp dụng các quy tắc lọc lưu lượng đã cấu hình.
+Trong dự án này, Application Load Balancer đóng vai trò là điểm tiếp nhận lưu lượng HTTP đến máy chủ web Nginx trên EC2 riêng tư. AWS WAF được liên kết với ALB để kiểm tra các yêu cầu truy cập và lọc những lưu lượng web có dấu hiệu độc hại.
 
-Trong dự án này, Web ACL có tên `KLTN-WebACL` được liên kết với `KLTN-ALB`. Mục tiêu là kiểm soát lưu lượng truy cập web và minh họa cách AWS WAF cho phép hoặc chặn các yêu cầu dựa trên những quy tắc được thiết lập.
+### 1. Application Load Balancer
 
-#### 1. Chuẩn bị môi trường WAF
+Dự án sử dụng Application Load Balancer có tên KLTN-ALB.
 
-Trước khi cấu hình AWS WAF, cần xác nhận các tài nguyên sau đã sẵn sàng:
+ALB tiếp nhận các yêu cầu HTTP và chuyển tiếp lưu lượng phù hợp đến Target Group đã cấu hình.
 
-- Application Load Balancer có tên `KLTN-ALB`.
-- AWS WAF Web ACL có tên `KLTN-WebACL`.
-- Máy chủ web đang hoạt động phía sau Application Load Balancer.
-- Quyền truy cập AWS Management Console.
+Các bước kiểm tra cấu hình ALB:
 
-Application Load Balancer đóng vai trò là điểm tiếp nhận lưu lượng truy cập web, trong khi AWS WAF kiểm tra các yêu cầu trước khi chúng được chuyển đến máy chủ web.
+1. Mở dịch vụ **EC2**.
+2. Chọn **Load Balancers**.
+3. Tìm KLTN-ALB.
+4. Kiểm tra Scheme, Listener, Availability Zone và Security Group liên kết.
+5. Mở Target Group tương ứng.
+6. Kiểm tra EC2 Target đã đăng ký và trạng thái Health.
 
-#### 2. Tạo và cấu hình Web ACL
+ALB cung cấp điểm truy cập tập trung đến máy chủ web thay vì yêu cầu người dùng kết nối trực tiếp với EC2 riêng tư.
 
-Để cấu hình AWS WAF:
+![Cấu hình và trạng thái KLTN-ALB](/images/4-Workshop/4.6-Load%20Balancing%20and%20Web%20Application%20Protection/alb-details.png)
 
-1. Mở AWS Management Console.
-2. Truy cập **AWS WAF & Shield**.
-3. Chọn **Web ACLs**.
-4. Mở Web ACL có tên `KLTN-WebACL`.
-5. Kiểm tra các quy tắc đã cấu hình và hành động mặc định.
-6. Kiểm tra tài nguyên AWS được liên kết.
+![Target Group và trạng thái EC2 Target](/images/4-Workshop/4.6-Load%20Balancing%20and%20Web%20Application%20Protection/target-group.png)
 
-Web ACL chứa các quy tắc xác định liệu những yêu cầu truy cập đến có được cho phép hay bị chặn.
+### 2. Cấu hình AWS WAF
 
-#### 3. Liên kết AWS WAF với Application Load Balancer
+AWS WAF được sử dụng để kiểm tra các yêu cầu HTTP và áp dụng quy tắc lọc lưu lượng web.
 
-AWS WAF được liên kết với Application Load Balancer để kiểm tra các yêu cầu HTTP gửi đến hệ thống.
+Dự án sử dụng Web ACL có tên KLTN-WebACL, được liên kết với KLTN-ALB.
 
-Thực hiện kiểm tra liên kết như sau:
+Các bước kiểm tra Web ACL:
 
-1. Mở AWS WAF Console.
-2. Chọn `KLTN-WebACL`.
-3. Kiểm tra danh sách tài nguyên AWS được liên kết.
-4. Xác nhận `KLTN-ALB` xuất hiện trong danh sách.
+1. Mở dịch vụ **AWS WAF & Shield**.
+2. Chọn **Web ACLs**.
+3. Tìm KLTN-WebACL.
+4. Kiểm tra tài nguyên AWS được liên kết.
+5. Xem các Rule và Rule Group đã cấu hình.
+6. Kiểm tra các chỉ số lưu lượng hiện có.
 
-Cấu hình này cho phép AWS WAF kiểm tra các yêu cầu web trước khi chúng được chuyển tiếp đến máy chủ EC2.
+AWS Managed Rules hỗ trợ phát hiện và ngăn chặn các mẫu tấn công web phổ biến, bao gồm SQL Injection và Cross-Site Scripting.
 
-#### 4. Kiểm tra kết quả lọc lưu lượng truy cập
+![KLTN-WebACL được liên kết với Application Load Balancer](/images/4-Workshop/4.6-Load%20Balancing%20and%20Web%20Application%20Protection/waf-web-acl.png)
 
-Sau khi liên kết Web ACL với Application Load Balancer, tiến hành kiểm tra thống kê yêu cầu trong AWS WAF Console.
+![Cấu hình AWS WAF Managed Rules](/images/4-Workshop/4.6-Load%20Balancing%20and%20Web%20Application%20Protection/waf-rules.png)
 
-Dashboard cung cấp thông tin về số lượng yêu cầu được cho phép hoặc bị chặn bởi các quy tắc đã cấu hình.
+### 3. Kiểm tra lưu lượng web
 
-Trong quá trình triển khai, dashboard của Web ACL hiển thị kết quả như sau:
+Dự án thực hiện các yêu cầu HTTP cơ bản để quan sát phản hồi của ứng dụng trước và sau khi áp dụng WAF.
 
-| Hành động đối với yêu cầu | Số lượng |
-|---|---:|
-| Allowed (Cho phép) | 5 |
-| Blocked (Chặn) | 25 |
-| Tổng cộng | 30 |
+Các trường hợp kiểm tra gồm:
 
-Kết quả này cho thấy AWS WAF đã xử lý các yêu cầu truy cập và áp dụng những quy tắc lọc lưu lượng.
+- Yêu cầu HTTP thông thường để xác minh dịch vụ web vẫn truy cập được.
 
-#### 5. Xác minh cấu hình WAF
+- Mẫu SQL Injection trong tham số yêu cầu.
 
-Để xác minh cấu hình:
+- Mẫu Cross-Site Scripting (XSS) trong tham số yêu cầu.
 
-1. Mở AWS WAF Console.
-2. Chọn `KLTN-WebACL`.
-3. Kiểm tra tài nguyên được liên kết và xác nhận `KLTN-ALB` đã được gắn.
-4. Xem lại thống kê các yêu cầu truy cập.
-5. So sánh số lượng yêu cầu được cho phép và bị chặn.
+- Yêu cầu có dạng Path Traversal.
 
-Ngoài ra, có thể truy cập ALB thông qua DNS name để xác minh máy chủ web có thể truy cập được.
+Ví dụ lệnh kiểm tra:
 
-**Lưu ý:** Thống kê yêu cầu cho thấy AWS WAF đã xử lý và lọc lưu lượng truy cập. Không nên xem đây là bằng chứng đã kiểm thử thành công tất cả các loại tấn công nếu chưa có kết quả kiểm thử tương ứng.
+```bash
+curl -i "http://<ALB-DNS>/"
+```
 
-#### Kết luận
+Kiểm tra mẫu SQL Injection:
 
-Trong phần này, AWS WAF đã được cấu hình và liên kết với Application Load Balancer để kiểm tra lưu lượng truy cập web.
+```bash
+curl -i "http://<ALB-DNS>/?id=1%20OR%201=1"
+```
 
-Thống kê ghi nhận 30 yêu cầu đã được xử lý, trong đó có 5 yêu cầu được cho phép và 25 yêu cầu bị chặn. Kết quả này minh họa cách AWS WAF cung cấp thêm một lớp bảo vệ cho hạ tầng web được triển khai trên AWS.
+Kiểm tra mẫu XSS:
+
+```bash
+curl -i "http://<ALB-DNS>/?input=<script>alert(1)</script>"
+```
+
+Thay <ALB-DNS> bằng DNS thực tế của Application Load Balancer.
+
+![Yêu cầu HTTP thông thường trả về HTTP 200](/images/4-Workshop/4.6-Load%20Balancing%20and%20Web%20Application%20Protection/waf-normal-request.png)
+
+### 4. Kết quả kiểm thử
+
+Trong quá trình triển khai, yêu cầu web thông thường đã được máy chủ xử lý thành công.
+
+Các bài kiểm tra bảo mật ghi nhận kết quả:
+
+| Bài kiểm tra | Kết quả quan sát |
+|---|---|
+| Yêu cầu HTTP thông thường | HTTP 200 |
+| Kiểm tra SQL Injection trước khi bật WAF | HTTP 200 |
+| Kiểm tra SQL Injection sau khi bật WAF | HTTP 403 |
+| Kiểm tra XSS trước khi bật WAF | HTTP 200 |
+| Kiểm tra XSS sau khi bật WAF | HTTP 403 |
+| Yêu cầu dạng Path Traversal | HTTP 400 |
+
+Phản hồi HTTP 403 trong các bài kiểm tra SQL Injection và XSS cho thấy yêu cầu đã bị chặn bởi lớp bảo vệ web được cấu hình.
+
+Phản hồi HTTP 400 đối với yêu cầu dạng Path Traversal cho thấy yêu cầu bị từ chối. Không nên khẳng định AWS WAF là thành phần trực tiếp chặn yêu cầu này nếu chưa có WAF log hoặc metric xác nhận hành động của Rule tương ứng.
+
+![Yêu cầu kiểm thử SQL Injection và XSS trả về HTTP 403](/images/4-Workshop/4.6-Load%20Balancing%20and%20Web%20Application%20Protection/waf-sqli-xss.png)
+
+![AWS WAF Sampled Requests ghi nhận yêu cầu SQL Injection bị chặn](/images/4-Workshop/4.6-Load%20Balancing%20and%20Web%20Application%20Protection/waf-sampled-block.png)
+
+### 5. Lợi ích bảo mật
+
+Cấu hình ALB và WAF mang lại các lợi ích:
+
+- Cung cấp điểm tiếp nhận tập trung cho lưu lượng web.
+
+- Phân tách Load Balancer có khả năng tiếp nhận truy cập bên ngoài với EC2 riêng tư.
+
+- Kiểm tra các yêu cầu HTTP đi vào hệ thống.
+
+- Lọc các yêu cầu khớp với quy tắc tấn công web đã cấu hình.
+
+- Giảm khả năng truy cập trực tiếp đến máy chủ ứng dụng.
+
+### 6. Kết luận
+
+Phần này trình bày cách Application Load Balancer và AWS WAF phối hợp để cung cấp khả năng truy cập và bảo vệ lưu lượng web.
+
+Các bài kiểm tra thực tế cho thấy yêu cầu thử nghiệm SQL Injection và XSS nhận phản hồi HTTP 403 sau khi áp dụng WAF, trong khi truy cập web thông thường vẫn trả về HTTP 200.
+
+==================================================

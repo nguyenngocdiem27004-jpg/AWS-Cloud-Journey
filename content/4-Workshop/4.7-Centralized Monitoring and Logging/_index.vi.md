@@ -8,102 +8,120 @@ pre: " <b> 4.7. </b> "
 
 #### Tổng quan
 
-Phần này giới thiệu các dịch vụ giám sát và ghi nhật ký được sử dụng để theo dõi hạ tầng AWS triển khai trong dự án.
+Giám sát, ghi nhật ký và theo dõi cấu hình là những yếu tố quan trọng để duy trì tính bảo mật và độ tin cậy của hạ tầng AWS.
 
-AWS cung cấp nhiều dịch vụ hỗ trợ quản trị viên giám sát hiệu suất tài nguyên, ghi lại các hoạt động trên tài khoản và kiểm tra cấu hình tài nguyên.
+Dự án sử dụng Amazon CloudWatch, AWS CloudTrail, AWS Config, Amazon EventBridge và Amazon SNS để theo dõi hoạt động tài nguyên, ghi nhận sự kiện tài khoản, đánh giá cấu hình và gửi thông báo về một số thay đổi liên quan đến bảo mật.
 
-Các dịch vụ chính được đề cập trong dự án bao gồm:
+### 1. Amazon CloudWatch
 
-- **Amazon CloudWatch:** Giám sát các chỉ số và thông tin hoạt động của tài nguyên AWS.
-- **AWS CloudTrail:** Ghi lại các hoạt động trên tài khoản và các sự kiện API.
-- **AWS Config:** Ghi nhận cấu hình tài nguyên và đánh giá chúng dựa trên các quy tắc cấu hình.
+Amazon CloudWatch thu thập và hiển thị dữ liệu giám sát của các tài nguyên AWS.
 
-Các dịch vụ này cung cấp thông tin giúp quản trị viên kiểm tra hoạt động hạ tầng và phát hiện những vấn đề tiềm ẩn về cấu hình hoặc vận hành.
+Trong dự án, CloudWatch được sử dụng để xem xét các chỉ số EC2 và theo dõi thông tin giám sát liên quan đến quá trình xử lý sự kiện bảo mật.
 
-#### 1. Chuẩn bị môi trường giám sát
+Các bước kiểm tra CloudWatch:
 
-Trước khi kiểm tra các dịch vụ giám sát, cần xác nhận những tài nguyên AWS sau đã sẵn sàng:
+1. Mở dịch vụ **CloudWatch**.
+2. Chọn **Metrics**.
+3. Xem các chỉ số EC2 hiện có.
+4. Chọn các chỉ số của Instance cần theo dõi.
+5. Xem biểu đồ CPU Utilization và các chỉ số khả dụng khác.
 
-- EC2 instance có tên `KLTN-Web-Server`.
-- Application Load Balancer có tên `KLTN-ALB`.
-- RDS MySQL instance có tên `kltn-db`.
-- Quyền truy cập AWS Management Console.
-- Các quyền IAM phù hợp để xem thông tin giám sát và ghi nhật ký.
+CloudWatch giúp quản trị viên theo dõi hiệu suất tài nguyên và nhận biết những thay đổi bất thường trong các chỉ số được giám sát.
 
-Các dịch vụ giám sát được kiểm tra trong AWS Region `ap-southeast-1` (Singapore), nơi triển khai hạ tầng của dự án.
+![Chỉ số CPU Utilization của EC2 trên CloudWatch](/images/4-Workshop/4.7-Centralized%20Monitoring%20and%20Logging/cloudwatch-metrics.png)
 
-#### 2. Giám sát chỉ số EC2 bằng Amazon CloudWatch
+### 2. AWS CloudTrail
 
-Amazon CloudWatch thu thập và hiển thị các chỉ số từ tài nguyên AWS.
+AWS CloudTrail ghi lại các hoạt động được thực hiện trong tài khoản AWS, bao gồm các Management Event phát sinh thông qua AWS Management Console, CLI và API.
 
-Để kiểm tra thông tin giám sát EC2:
+Dự án sử dụng Trail đa khu vực có tên kltn-trail. Trail chuyển nhật ký đến S3 Bucket và sử dụng mã hóa AWS KMS.
 
-1. Mở AWS Management Console.
-2. Truy cập **CloudWatch**.
-3. Chọn **Metrics**.
-4. Mở nhóm chỉ số EC2.
-5. Xem các chỉ số có sẵn của EC2 instance.
+Các bước kiểm tra CloudTrail:
 
-Một số chỉ số EC2 phổ biến bao gồm:
+1. Mở dịch vụ **CloudTrail**.
+2. Chọn **Trails**.
+3. Tìm kltn-trail.
+4. Kiểm tra cấu hình Multi-Region.
+5. Kiểm tra S3 Destination và cấu hình mã hóa.
+6. Mở **Event history** để xem các Management Event đã ghi nhận.
 
-- `CPUUtilization`: Mức sử dụng CPU.
-- `NetworkIn`: Lưu lượng mạng đi vào.
-- `NetworkOut`: Lưu lượng mạng đi ra.
-- `NetworkPacketsIn`: Số lượng gói tin đi vào.
-- `NetworkPacketsOut`: Số lượng gói tin đi ra.
+CloudTrail cung cấp dữ liệu kiểm toán giúp quản trị viên điều tra những thay đổi đối với tài nguyên và cấu hình tài khoản AWS.
 
-Các chỉ số này giúp quản trị viên theo dõi hiệu suất và hoạt động mạng của EC2 instance.
+![Cấu hình kltn-trail trong AWS CloudTrail](/images/4-Workshop/4.7-Centralized%20Monitoring%20and%20Logging/cloudtrail-trail.png)
 
-#### 3. Kiểm tra sự kiện AWS CloudTrail
+### 3. AWS Config
 
-AWS CloudTrail ghi lại các hoạt động trên tài khoản và sự kiện API được thực hiện trong tài khoản AWS.
+AWS Config ghi nhận cấu hình tài nguyên và đánh giá tài nguyên dựa trên các Configuration Rule.
 
-Để kiểm tra thông tin CloudTrail:
+Dự án bật AWS Config Recorder và sử dụng các quy tắc để kiểm tra một số yêu cầu bảo mật đã lựa chọn.
 
-1. Mở AWS Management Console.
-2. Truy cập **CloudTrail**.
-3. Chọn **Event history**.
-4. Xem các sự kiện quản lý gần đây.
-5. Khi cần thiết, lọc sự kiện theo tên sự kiện, tài nguyên hoặc danh tính người dùng.
+Các Rule được cấu hình gồm:
 
-CloudTrail giúp quản trị viên xác định các thao tác được thực hiện trên tài nguyên AWS, bao gồm tạo tài nguyên, thay đổi cấu hình và các hoạt động liên quan đến truy cập.
+- cloudtrail-enabled
 
-#### 4. Kiểm tra cấu hình tài nguyên bằng AWS Config
+- ec2-instance-no-public-ip
 
-AWS Config hỗ trợ theo dõi cấu hình tài nguyên và đánh giá chúng dựa trên các quy tắc đã thiết lập.
+- restricted-ssh
 
-Trong dự án này, chức năng ghi nhận của AWS Config đã được bật để thu thập thông tin về các tài nguyên AWS.
+- vpc-default-security-group-closed
 
-Để kiểm tra thông tin cấu hình:
+Các bước kiểm tra AWS Config:
 
-1. Mở AWS Management Console.
-2. Truy cập **AWS Config**.
-3. Kiểm tra danh sách tài nguyên.
-4. Khi cần thiết, mở lịch sử cấu hình của một tài nguyên.
-5. Xem trạng thái tuân thủ của các quy tắc đã cấu hình.
+1. Mở dịch vụ **AWS Config**.
+2. Kiểm tra trạng thái Recorder.
+3. Mở **Resources** để xem danh sách tài nguyên đã ghi nhận.
+4. Chọn **Rules**.
+5. Kiểm tra kết quả đánh giá của từng Rule.
+6. Xem trạng thái Compliant, Noncompliant hoặc Not evaluated.
 
-AWS Config cung cấp thông tin về những thay đổi trong cấu hình tài nguyên và hỗ trợ phát hiện các tài nguyên có thể chưa đáp ứng những quy tắc đã xác định.
+Cần xem xét kết quả đánh giá của từng Rule riêng biệt. Rule chưa có kết quả đánh giá không được mô tả là Compliant.
 
-**Lưu ý:** Kết quả tuân thủ phụ thuộc vào các quy tắc được cấu hình trong AWS Config. Chỉ nên kết luận tài nguyên tuân thủ khi kết quả đánh giá tương ứng xác nhận điều đó.
+![Các quy tắc bảo mật và trạng thái đánh giá trong AWS Config](/images/4-Workshop/4.7-Centralized%20Monitoring%20and%20Logging/aws-config-rules.png)
 
-#### 5. Tổng hợp kết quả giám sát và ghi nhật ký
+### 4. Amazon EventBridge và thông báo SNS
 
-Sau khi kiểm tra các dịch vụ, quản trị viên có thể sử dụng thông tin thu thập được để đánh giá tình trạng hoạt động của môi trường AWS.
+Amazon EventBridge có thể phát hiện các sự kiện AWS được lựa chọn và chuyển chúng đến Target đã cấu hình.
 
-Bảng sau tổng hợp vai trò của từng dịch vụ:
+Dự án sử dụng EventBridge Rule có tên KLTN-SG-Change-Alert để phát hiện các thay đổi Ingress hoặc Egress của Security Group EC2.
 
-| Dịch vụ AWS | Mục đích chính |
-|---|---|
-| Amazon CloudWatch | Giám sát các chỉ số tài nguyên |
-| AWS CloudTrail | Ghi lại hoạt động tài khoản và sự kiện API |
-| AWS Config | Theo dõi cấu hình tài nguyên và đánh giá mức độ tuân thủ |
+Rule được kết nối với quy trình gửi thông báo thông qua Amazon SNS.
 
-Các dịch vụ này bổ trợ cho nhau bằng cách cung cấp những loại thông tin vận hành và bảo mật khác nhau.
+SNS Topic có tên KLTN-Security-Alert và Email Subscription đã được xác nhận.
 
-#### Kết luận
+Các bước kiểm tra cấu hình thông báo:
 
-Trong phần này, Amazon CloudWatch, AWS CloudTrail và AWS Config đã được tìm hiểu và kiểm tra như những dịch vụ giám sát, ghi nhật ký cho hạ tầng AWS.
+1. Mở **Amazon EventBridge**.
+2. Chọn **Rules**.
+3. Tìm KLTN-SG-Change-Alert.
+4. Kiểm tra Event Pattern và Target.
+5. Mở **Amazon SNS**.
+6. Chọn KLTN-Security-Alert.
+7. Kiểm tra Topic và trạng thái xác nhận Email Subscription.
 
-CloudWatch cung cấp các chỉ số hiệu suất tài nguyên, CloudTrail ghi lại hoạt động trên tài khoản và AWS Config theo dõi cấu hình tài nguyên cũng như đánh giá mức độ tuân thủ.
+Các chỉ số CloudWatch cũng có thể được sử dụng để xem hoạt động của EventBridge Rule, bao gồm Matched Events và Invocations.
 
-Kết hợp với nhau, các dịch vụ này hỗ trợ giám sát hạ tầng, kiểm tra cấu hình và quản lý bảo mật trong môi trường AWS.
+![EventBridge Rule theo dõi thay đổi Security Group đang bật](/images/4-Workshop/4.7-Centralized%20Monitoring%20and%20Logging/eventbridge-rule.png)
+
+### 5. Lợi ích của hệ thống giám sát
+
+Các dịch vụ giám sát và ghi nhật ký mang lại những lợi ích:
+
+- CloudWatch hỗ trợ theo dõi hiệu suất tài nguyên và các chỉ số giám sát.
+
+- CloudTrail ghi nhận hoạt động tài khoản phục vụ kiểm toán và điều tra.
+
+- AWS Config theo dõi cấu hình tài nguyên và đánh giá các quy tắc bảo mật được lựa chọn.
+
+- EventBridge phát hiện những sự kiện bảo mật đã cấu hình.
+
+- SNS gửi thông báo đến địa chỉ email đã đăng ký.
+
+Sự kết hợp của các dịch vụ này giúp tăng khả năng quan sát hoạt động hạ tầng và hỗ trợ quản trị viên kiểm tra các thay đổi liên quan đến bảo mật.
+
+### 6. Kết luận
+
+Phần này trình bày cách sử dụng các dịch vụ giám sát, ghi nhật ký và thông báo của AWS.
+
+CloudWatch, CloudTrail và AWS Config hỗ trợ giám sát tài nguyên, ghi nhận hoạt động và đánh giá cấu hình. EventBridge và SNS mở rộng khả năng này bằng cách hỗ trợ gửi thông báo khi phát hiện các thay đổi Security Group đã được cấu hình.
+
+==================================================
