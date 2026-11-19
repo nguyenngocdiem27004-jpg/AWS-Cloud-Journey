@@ -1,9 +1,9 @@
----
+﻿---
 title: "Chia sẻ và Đóng góp ý kiến"
 date: 2026-10-30
-weight: 7
+weight: 6
 chapter: false
-pre: " <b> 7. </b> "
+pre: " <b> 6. </b> "
 ---
 
 > Trong quá trình tham gia chương trình First Cloud AI Journey (FCAJ), tôi có cơ hội tìm hiểu các công nghệ điện toán đám mây, nâng cao kỹ năng chuyên môn và vận dụng kiến thức đã học tại trường vào một dự án thực tế. Dưới đây là những nhận xét, trải nghiệm và đề xuất của tôi nhằm góp phần nâng cao chất lượng chương trình thực tập.
