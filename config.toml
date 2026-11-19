@@ -1,6 +1,7 @@
 # AWS Infrastructure Security Workshop
 
 theme = "hugo-theme-learn"
+canonifyURLs = true
 
 # Search functionality
 [outputs]
@@ -8,6 +9,7 @@ home = ["HTML", "RSS", "JSON"]
 
 [params]
   themeVariant = "workshop"
+  ordersectionsby = "weight"
   editURL = ""
   description = "Research and Implementation of Infrastructure Security on AWS"
   author = "AWS Infrastructure Security Workshop"
